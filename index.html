@@ -309,6 +309,14 @@ html.mobile .hdr-right{width:100%;justify-content:space-between}
 .login{position:fixed;inset:0;z-index:100;background:var(--bg);display:grid;place-items:center;padding:16px}
 .login-card{width:min(400px,100%);display:grid;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:24px}
 .login-card h1{font-size:1.6rem}
+.viewbar{display:none}
+html.viewer .viewbar{display:flex;gap:8px;align-items:center;justify-content:center;padding:8px 12px;background:var(--sunk);border-bottom:1px solid var(--line);font-size:.9rem}
+html.viewer :is(#gear,[data-open-settings],[data-edit-acct],#new-trade,#p-save,#drop,#save,#del,#del-yes,#split,#merge,#sel-clear,#dres-apply,#ask-claude,#ai-toggle,.pick,.sel,.pdrop,#p-drop){display:none!important}
+html.viewer :is(#prep,#form,.mode-card) :is(input,textarea,select,label,.seg,.pseg){pointer-events:none}
+html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
+.share-list{display:grid;gap:8px;margin:8px 0 0;padding:0;list-style:none}
+.share-list li{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.share-list li span{flex:1;min-width:120px}
 </style>
 </head>
 <body>
@@ -326,6 +334,7 @@ html.mobile .hdr-right{width:100%;justify-content:space-between}
 
 
 
+<div class="viewbar" role="status">👁 <b>Nur ansehen</b> · <span id="viewbar-txt">Du kannst alles sehen, aber nichts ändern.</span></div>
 <div class="wrap">
   <header>
     <div>
@@ -638,6 +647,14 @@ html.mobile .hdr-right{width:100%;justify-content:space-between}
     </div>
     <p class="msg" id="bk-msg"></p>
   </div>
+  <div class="set-sec">
+    <div class="label">Ansehen-Links</div>
+    <p class="hint">Wer den Link hat, sieht dein ganzes Journal ohne Login, kann aber nichts ändern. Jederzeit widerrufbar.</p>
+    <div class="row"><label class="field"><span class="label">Für wen?</span><input id="sh-label" placeholder="z. B. Bruder, Mentor" maxlength="40"></label></div>
+    <div class="actions"><button type="button" class="btn small" id="sh-new">Link erstellen</button></div>
+    <ul class="share-list" id="sh-list"></ul>
+    <p class="msg" id="sh-msg"></p>
+  </div>
   <div class="actions">
     <button type="submit" class="btn primary" id="s-save">Speichern</button>
     <button type="button" class="btn danger" id="s-del">Konto löschen</button>
@@ -653,7 +670,8 @@ html.mobile .hdr-right{width:100%;justify-content:space-between}
 (function(){
   const CFG = window.JOURNAL_CONFIG || {};
   const SB_URL = CFG.supabaseUrl, SB_KEY = CFG.supabaseKey;
-  const sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+  const VIEW = new URLSearchParams(location.search).get('view');
+  const sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: !VIEW, autoRefreshToken: !VIEW } });
   let uid = null, readyResolve; const ready = new Promise(r => readyResolve = r);
   const L = { trades: [], days: [], settings: [] }, timers = {};
   const snap = (id, data) => ({ id, exists: data !== undefined, data: () => data });
@@ -736,6 +754,39 @@ html.mobile .hdr-right{width:100%;justify-content:space-between}
     return { trades: j.trades.length, days: j.days.length, settings: j.settings.length, files: n };
   }
 
+  // ---- Ansehen-Modus: nur lesen über geheimen Link
+  if(VIEW){
+    document.documentElement.classList.add('viewer');
+    const denied = async () => { const e = new Error('Nur ansehen'); e.code = 'permission_denied'; throw e; };
+    const V = { trades: [], days: [], settings: [] }, LV = { trades: [], days: [], settings: [] };
+    const fire = () => ['trades','days','settings'].forEach(t => LV[t].forEach(fn => fn(V[t])));
+    async function pull(){
+      const { data, error } = await sb.rpc('shared_journal', { p_token: VIEW });
+      if(error || !data){ document.getElementById('viewbar-txt').textContent = 'Dieser Link ist ungültig oder wurde widerrufen.'; return false; }
+      V.trades = data.trades; V.days = data.days; V.settings = data.settings; fire(); return true;
+    }
+    const vdb = {
+      collection(name){ return {
+        onSnapshot(cb){ LV[name].push(rows => cb({ docs: rows.map(r => snap(name === 'trades' ? r.id : r.date, r.data)) })); cb({ docs: V[name].map(r => snap(name === 'trades' ? r.id : r.date, r.data)) }); return () => {}; },
+        add: denied, doc(){ return { set: denied, delete: denied }; }
+      }; },
+      doc(path){ const id = path.split('/')[1]; return {
+        onSnapshot(cb){ const f = rows => { const r = rows.find(x => x.key === id); cb(snap(id, r ? r.data : undefined)); }; LV.settings.push(f); f(V.settings); return () => {}; },
+        set: denied
+      }; }
+    };
+    pull().then(ok => { if(ok){ readyResolve(vdb); setInterval(pull, 60000); } });
+    window.SBJ = { ready: () => ready, assets: null, blobUrl, viewer: true, backup: denied, importBackup: denied, signOut: () => {}, shares: null };
+    return;
+  }
+
+  // ---- Ansehen-Links verwalten (nur Besitzer)
+  const shares = {
+    async list(){ return chk(await sb.from('shares').select('token,label,created_at,last_seen').order('created_at')).data; },
+    async create(label){ return chk(await sb.from('shares').insert({ label: label || '' }).select('token,label').single()).data; },
+    async revoke(token){ chk(await sb.from('shares').delete().eq('token', token)); }
+  };
+
   // ---- Login
   const gate = document.getElementById('login');
   function showGate(on){ gate.hidden = !on; }
@@ -763,7 +814,7 @@ html.mobile .hdr-right{width:100%;justify-content:space-between}
     }
   });
 
-  window.SBJ = { ready: () => ready, assets, blobUrl, backup, importBackup, signOut: () => sb.auth.signOut() };
+  window.SBJ = { ready: () => ready, assets, blobUrl, backup, importBackup, signOut: () => sb.auth.signOut(), shares, viewer: false };
 })();
 
 </script>
@@ -1877,10 +1928,11 @@ html.mobile .hdr-right{width:100%;justify-content:space-between}
   (async ()=>{
     try{ db = await window.SBJ.ready(); }catch(e){ db = null; }
     if(!db){ $('#status').textContent='Offline: Nicht angemeldet'; return; }
+    const VIEWER = window.SBJ.viewer;
     col = db.collection('trades');
     col.onSnapshot(snap=>{
       trades = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
-      $('#status').textContent = trades.length+' Trade'+(trades.length===1?'':'s')+' gespeichert';
+      $('#status').textContent = (window.SBJ.viewer ? 'Nur ansehen · ' : '')+trades.length+' Trade'+(trades.length===1?'':'s')+(window.SBJ.viewer ? '' : ' gespeichert');
       render();
     }, ()=>{ $('#status').textContent = 'Verbindung unterbrochen. Seite neu laden.'; });
     db.collection('days').onSnapshot(snap=>{
@@ -1903,8 +1955,39 @@ html.mobile .hdr-right{width:100%;justify-content:space-between}
     $('#ai-toggle').addEventListener('click', ()=>{ aiOn = !aiOn; try{ localStorage.setItem('nqj-ai', aiOn?'1':'0'); }catch(e){} applyAi(); });
     applyAi();
     if(!assets){ $('#drop').hidden = true; }
+    if(!VIEWER) loadShares();
     render();
   })();
+  // ---- Ansehen-Links (Zahnrad)
+  async function loadShares(){
+    const ul = $('#sh-list'); if(!window.SBJ.shares) return;
+    try{
+      const rows = await window.SBJ.shares.list();
+      const base = location.origin + location.pathname;
+      ul.innerHTML = rows.length ? rows.map(r=>'<li><span><b>'+esc(r.label||'Ohne Name')+'</b><br><span class="hint">'+(r.last_seen ? 'zuletzt angesehen '+fmtDate(r.last_seen.slice(0,10)) : 'noch nicht geöffnet')+'</span></span>'+
+        '<button type="button" class="btn small" data-sh-copy="'+esc(base+'?view='+r.token)+'">Link kopieren</button>'+
+        '<button type="button" class="btn small danger" data-sh-del="'+esc(r.token)+'">Widerrufen</button></li>').join('') : '<li><span class="hint">Noch kein Link erstellt.</span></li>';
+    }catch(e){ $('#sh-msg').textContent = 'Links konnten nicht geladen werden.'; }
+  }
+  async function copyText(t){
+    try{ await navigator.clipboard.writeText(t); return true; }catch(e){
+      const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); let ok = false; try{ ok = document.execCommand('copy'); }catch(err){} ta.remove(); return ok; }
+  }
+  $('#sh-new').addEventListener('click', async ()=>{
+    $('#sh-msg').textContent = 'Erstelle Link …';
+    try{
+      const r = await window.SBJ.shares.create($('#sh-label').value.trim());
+      const url = location.origin + location.pathname + '?view=' + r.token;
+      $('#sh-label').value = '';
+      $('#sh-msg').textContent = (await copyText(url)) ? 'Link erstellt und kopiert. Jetzt einfach per WhatsApp oder Mail einfügen.' : 'Link erstellt: '+url;
+      loadShares();
+    }catch(e){ $('#sh-msg').textContent = 'Link konnte nicht erstellt werden.'; }
+  });
+  $('#sh-list').addEventListener('click', async e=>{
+    const c = e.target.closest('[data-sh-copy]'), d = e.target.closest('[data-sh-del]');
+    if(c){ $('#sh-msg').textContent = (await copyText(c.dataset.shCopy)) ? 'Link kopiert.' : c.dataset.shCopy; }
+    if(d){ try{ await window.SBJ.shares.revoke(d.dataset.shDel); $('#sh-msg').textContent = 'Link widerrufen. Er funktioniert ab sofort nicht mehr.'; loadShares(); }catch(err){ $('#sh-msg').textContent = 'Widerrufen fehlgeschlagen.'; } }
+  });
 })();
 </script>
 
