@@ -1468,6 +1468,7 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
   function drawPerf(){
     const cv = $('#perf-cv'), wrap = cv.parentElement; if(!wrap.clientWidth) return;
     const sel = $('#perf-acct'), accs = perfAccts();
+    if(!accs.length){ $('#perf-title').textContent = 'Kontoverlauf'; return; }
     if(sel.options.length !== accs.length){ sel.innerHTML = accs.map(a=>'<option value="'+esc(a)+'">'+esc(a.replace('APEX-','Apex '))+'</option>').join(''); }
     if(!accs.includes(pv.acct)) pv.acct = accs[0]; sel.value = pv.acct;
     $('#perf-title').textContent = 'Kontoverlauf '+pv.acct.replace('APEX-','Apex ');
