@@ -317,6 +317,16 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
 .share-list{display:grid;gap:8px;margin:8px 0 0;padding:0;list-style:none}
 .share-list li{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
 .share-list li span{flex:1;min-width:120px}
+.step{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--fg);color:var(--bg);font-size:.78rem;font-weight:700;margin-right:8px;vertical-align:2px}
+.h3{font-size:1.05rem;margin:0}
+.review-h{flex-basis:100%}
+.limits{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px}
+.limits .mode-card{border:0;padding:12px 0 0;border-top:1px solid var(--line);border-radius:0;background:transparent}
+.ov-more>summary{cursor:pointer;list-style:none}
+.ov-more>summary::-webkit-details-marker{display:none}
+.ov-more>summary h2::before{content:'▸ ';color:var(--muted)}
+.ov-more[open]>summary h2::before{content:'▾ '}
+.ov-more[open]{gap:10px}
 </style>
 </head>
 <body>
@@ -357,15 +367,18 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
 
 
   <div class="tab" data-panel="heute">
-  <section class="ov" aria-label="Alle Konten">
-    <div class="sec-title"><h2>Konten</h2><button type="button" class="btn small" data-open-settings>⚙ Konten verwalten</button></div>
-    <div class="ov-grid" id="ov-grid"></div>
-  </section>
-  <section class="mode-card" aria-label="Handelsmodus">
+  <section class="limits" aria-label="Heute pro Konto">
+    <div class="limits-head">
+      <h2 id="today-title">Heute</h2>
+      <button type="button" class="btn small" data-open-settings>⚙ Konto</button>
+    </div>
+    <div class="accts" id="accts"></div>
+  <div class="mode-card" aria-label="Handelsmodus">
     <div><div class="label">Handelsmodus</div>
       <div class="seg" id="mode-seg"><button type="button" data-m="challenge">Challenge · aggressiv</button><button type="button" data-m="funded">Funded · konservativ</button></div></div>
     <div class="mode-vals" id="mode-vals"></div>
     <label class="mode-auto"><input type="checkbox" id="mode-auto"> Automatisch auf „Funded“ umstellen, sobald das Auszahlungsziel erreicht ist</label>
+  </div>
   </section>
   <section class="focus" aria-label="Fokus für heute">
     <div class="focus-head">
@@ -383,7 +396,7 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
   <section class="prep" aria-label="Tagesvorbereitung">
     <form id="prep" autocomplete="off">
       <div class="prep-head">
-        <div><h2>Tagesvorbereitung</h2><p class="sub" id="prep-sub">Vor Handelsbeginn ausfüllen. Abends kurz prüfen, ob die Einschätzung gestimmt hat.</p></div>
+        <div><h2><span class="step">1</span>Vorbereitung</h2><p class="sub" id="prep-sub">Vor Handelsbeginn ausfüllen. Abends kurz prüfen, ob die Einschätzung gestimmt hat.</p></div>
         <label class="field" style="width:auto"><span class="label">Tag</span><input type="date" id="p-date"></label>
       </div>
       <div class="prep-shots"><div class="field"><span class="label">Screenshots der Analyse</span>
@@ -413,7 +426,7 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
         </div>
       </div>
       <div class="dcheck">
-        <div class="sec-title"><div><span class="label" id="chk-title">Tagestyp-Check (Trend oder Range)</span><p class="hint" id="chk-hint"></p></div><span class="dres" id="dres">noch offen</span></div>
+        <div class="sec-title"><div><h3 class="h3"><span class="step">2</span><span id="chk-title">Tagestyp-Check (Trend oder Range)</span></h3><p class="hint" id="chk-hint"></p></div><span class="dres" id="dres">noch offen</span></div>
         <div class="dcols">
           <div><div class="label">Trend-Tag · klare Dominanz (mind. 3 von 5)</div><div class="chips col" id="chk-d"></div></div>
           <div><div class="label">Range (mind. 2 von 4)</div><div class="chips col" id="chk-r"></div></div>
@@ -421,7 +434,8 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
         <div class="actions"><button type="button" class="btn small" id="dres-apply" hidden>Als Einschätzung übernehmen</button><span class="hint" id="dres-hint"></span></div>
       </div>
       <div class="review">
-        <div class="field"><span class="label">Abends: Hat die Einschätzung gestimmt?</span>
+        <h3 class="h3 review-h"><span class="step">3</span>Nach der Session</h3>
+        <div class="field"><span class="label">Hat die Einschätzung gestimmt?</span>
           <div class="seg pseg" data-p="hit"><button type="button" data-v="ja">Ja</button><button type="button" data-v="teilweise">Teilweise</button><button type="button" data-v="nein">Nein</button></div></div>
         <label class="field" style="flex:1;min-width:220px"><span class="label">Was war anders?</span><input type="text" id="p-review" placeholder="z. B. Range statt Trend, Dominanz kam erst ab 16:30"></label>
       </div>
@@ -429,13 +443,11 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
     </form>
   </section>
 
-  <section class="limits" aria-label="Heute pro Konto">
-    <div class="limits-head">
-      <h2>Konto heute</h2>
-      <button type="button" class="btn small" data-open-settings>⚙ Kontodaten</button>
-    </div>
-    <div class="accts" id="accts"></div>
-  </section>
+  <details class="ov ov-more" aria-label="Alle Konten">
+    <summary class="sec-title"><h2>Alle Konten <span class="note" id="ov-cnt"></span></h2><button type="button" class="btn small" data-open-settings>⚙ Konten verwalten</button></summary>
+    <div class="ov-grid" id="ov-grid"></div>
+  </details>
+
   </div>
 
   <div class="tab" data-panel="trades" hidden>
@@ -1267,6 +1279,7 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
   // ---- Konten-Übersicht
   function renderOverview(){
     const accs = ACCTS_FN(), td = todayStr();
+    $('#ov-cnt').textContent = accs.length ? '('+accs.length+')' : '';
     if(!accs.length){ $('#ov-grid').innerHTML = '<p class="sub">Noch kein Konto angelegt. Über „⚙ Konten verwalten“ das erste Konto eintragen.</p>'; return; }
     $('#ov-grid').innerHTML = accs.map(([k,name,size])=>{
       const l = L(k), all = trades.filter(t=>t.acct===k);
@@ -1363,6 +1376,7 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
 
   function renderAccts(){
     const td = todayStr();
+    { const k = actKey(); $('#today-title').textContent = 'Heute · '+((limits[k]&&limits[k].name)||k.replace('APEX-','Apex ')); }
     $('#accts').innerHTML = ACCTS_FN().filter(a=>a[0]===actKey()).map(([k,name,size])=>{
       const list = trades.filter(t=>t.date===td && t.acct===k).sort((a,b)=>(a.sort||'').localeCompare(b.sort||''));
       const net = list.reduce((a,t)=>a+netOf(t),0);
