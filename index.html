@@ -427,9 +427,12 @@ html.mobile .ftiles{grid-template-columns:repeat(2,minmax(0,1fr))}
           <div class="field"><span class="label">Grundstimmung</span>
             <div class="seg pseg" data-p="mood"><button type="button" data-v="schlecht">Nicht gut</button><button type="button" data-v="neutral">Neutral</button><button type="button" data-v="spitze">Spitze</button></div>
             <span class="hint" id="p-mood-hint">Wie fühlst du dich heute zum Handeln?</span></div>
-          <div class="field" id="p-goal-row" hidden><span class="label">Tagesziel bei schlechter Stimmung</span>
+          <div id="p-goal-row" hidden style="display:grid;gap:12px">
+          <label class="field"><span class="label">Grund – warum fühlst du dich heute nicht gut?</span><textarea id="p-mood-why" rows="2" placeholder="z. B. schlecht geschlafen, Stress, keine Lust, gestern Verlust …"></textarea></label>
+          <div class="field"><span class="label">Tagesziel bei schlechter Stimmung</span>
             <div class="seg pseg" data-p="moodGoal"><button type="button" data-v="0">Kein Handel</button><button type="button" data-v="1-1">1 TP / 1 SL</button><button type="button" data-v="2-1">2 TP / 1 SL</button><button type="button" data-v="2-2">2 TP / 2 SL</button></div>
             <span class="hint">Schluss, sobald eins davon erreicht ist (z. B. 2 TP <i>oder</i> 1 SL).</span></div>
+          </div>
           <div class="field"><span class="label">Cash Open live beobachtet?</span>
             <div class="seg pseg" data-p="open"><button type="button" data-v="ja">Ja</button><button type="button" data-v="nein">Nein, später gekommen</button></div>
             <span class="hint" id="p-open-hint">Ohne Cash Open fehlt dir der Tagestyp: dann nur kleines Ziel.</span></div>
@@ -1286,7 +1289,7 @@ html.mobile .ftiles{grid-template-columns:repeat(2,minmax(0,1fr))}
     setP('mood', p.mood||null); setP('moodGoal', p.moodGoal||null); setP('open', p.open||null); setP('delta', p.delta||null); setP('profile', p.profile||null); setP('bias', p.bias||null); setP('hit', p.hit||null);
     setChecked('#chk-d', (p.chkD||[]).map(String)); setChecked('#chk-r', (p.chkR||[]).map(String)); renderDres();
     $('#p-levels').value = p.levels||''; $('#p-scen-a').value = p.scenA||''; $('#p-scen-b').value = p.scenB||'';
-    $('#p-notes').value = p.notes||''; $('#p-review').value = p.review||'';
+    $('#p-notes').value = p.notes||''; $('#p-mood-why').value = p.moodWhy||''; $('#p-review').value = p.review||'';
     pShots = Array.isArray(p.shots) ? p.shots.slice() : []; renderPShots();
     pLoadedFor = date; pDirty = false; pHints(); moodHint();
   }
@@ -1297,7 +1300,7 @@ html.mobile .ftiles{grid-template-columns:repeat(2,minmax(0,1fr))}
     if(!db){ $('#p-msg').textContent='Keine Verbindung zum Speicher.'; return; }
     const date = $('#p-date').value || todayStr();
     const prep = {mood:P.mood, moodGoal:P.moodGoal, open:P.open, delta:P.delta, profile:P.profile, bias:P.bias, hit:P.hit, chkD:getChecked('#chk-d').map(Number), chkR:getChecked('#chk-r').map(Number), cls:dClass(),
-      levels:$('#p-levels').value.trim(), scenA:$('#p-scen-a').value.trim(), scenB:$('#p-scen-b').value.trim(),
+      moodWhy:$('#p-mood-why').value.trim(), levels:$('#p-levels').value.trim(), scenA:$('#p-scen-a').value.trim(), scenB:$('#p-scen-b').value.trim(),
       notes:$('#p-notes').value.trim(), review:$('#p-review').value.trim(), shots:pShots.slice(), updatedAt:Date.now()};
     $('#p-save').disabled = true;
     try{ await db.doc('days/'+date).set(Object.assign({}, days[date]||{}, {prep})); pDirty = false; $('#p-msg').textContent='Gespeichert.'; }
