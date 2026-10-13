@@ -340,10 +340,16 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
 html.mobile .ftiles{grid-template-columns:repeat(2,minmax(0,1fr))}
 .f-more>summary{cursor:pointer;color:var(--muted);font-size:.88rem;padding:2px 0}
 .f-more[open]>summary{margin-bottom:10px}
+.tbar{display:none}
+@media (display-mode: window-controls-overlay){
+  .tbar{display:block;position:fixed;left:env(titlebar-area-x,0);top:env(titlebar-area-y,0);width:env(titlebar-area-width,100%);height:env(titlebar-area-height,32px);-webkit-app-region:drag;app-region:drag;background:var(--bg);z-index:90}
+  body{padding-top:env(titlebar-area-height,32px)}
+}
 </style>
 </head>
 <body>
 
+<div class="tbar" aria-hidden="true"></div>
 <div class="login" id="login" hidden>
   <form class="login-card" id="login-form" autocomplete="on">
     <h1>Trading-Journal <span>NQ</span></h1>
