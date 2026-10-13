@@ -12,6 +12,7 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>NQ Trading-Journal</title>
+<script>try{var t=localStorage.getItem('nqj-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 
@@ -372,6 +373,7 @@ html.mobile .ftiles{grid-template-columns:repeat(2,minmax(0,1fr))}
     </div>
     <div class="hdr-right">
       <button type="button" class="gear" id="gear" aria-label="Einstellungen &amp; Kontodaten" title="Einstellungen &amp; Kontodaten" data-open-settings><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.4-2.5 1a7.5 7.5 0 0 0-1.7-1L15 3.3h-4L10.7 6a7.5 7.5 0 0 0-1.7 1l-2.5-1-2 3.4L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.4 2.5-1a7.5 7.5 0 0 0 1.7 1l.3 2.7h4l.3-2.7a7.5 7.5 0 0 0 1.7-1l2.5 1 2-3.4zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg></button>
+      <div class="seg" id="theme-seg" style="width:auto" aria-label="Farbe"><button type="button" data-v="light" title="Hell">☀</button><button type="button" data-v="dark" title="Dunkel">☾</button><button type="button" data-v="auto" title="Wie System">◐</button></div>
       <div class="seg" id="view-seg" style="width:auto" aria-label="Ansicht"><button type="button" data-v="pc">PC</button><button type="button" data-v="handy">Handy</button></div>
       <label class="cur" for="cur-sel"><span class="label">Währung</span>
         <select id="cur-sel"><option value="USD">USD $</option><option value="EUR">EUR €</option><option value="CHF">CHF</option></select></label>
@@ -1999,6 +2001,10 @@ html.mobile .ftiles{grid-template-columns:repeat(2,minmax(0,1fr))}
     setTimeout(()=>{ drawChart(); drawPerf(); }, 0); }
   document.querySelectorAll('#view-seg button').forEach(b=>b.addEventListener('click', ()=>{ VIEW = b.dataset.v; try{ localStorage.setItem('nqj-view', VIEW); }catch(e){} applyView(); }));
   applyView();
+  (function(){ let th = 'auto'; try{ th = localStorage.getItem('nqj-theme') || 'auto'; }catch(e){}
+    const set = v => { th = v; if(v==='auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', v);
+      try{ localStorage.setItem('nqj-theme', v); }catch(e){} document.querySelectorAll('#theme-seg button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.v===v))); };
+    document.querySelectorAll('#theme-seg button').forEach(b=>b.addEventListener('click', ()=>set(b.dataset.v))); set(th); })();
   $('#cur-sel').value = CUR;
   $('#cur-sel').addEventListener('change', e=>{ CUR = e.target.value; try{ localStorage.setItem('nqj-cur', CUR); }catch(err){} render(); pHints(); });
   resetForm(); render();
