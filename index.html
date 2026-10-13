@@ -327,6 +327,19 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
 .ov-more>summary h2::before{content:'▸ ';color:var(--muted)}
 .ov-more[open]>summary h2::before{content:'▾ '}
 .ov-more[open]{gap:10px}
+.fstat{display:grid;gap:2px;padding:12px 14px;border-radius:8px;font-size:.92rem}
+.fstat b{font-size:1.15rem}
+.fstat.ok{background:var(--win-bg);color:var(--win)} .fstat.warn{background:var(--warn-bg);color:var(--warn)} .fstat.stop{background:var(--loss-bg);color:var(--loss)}
+.ftiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.ftile{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:grid;gap:2px;min-width:0}
+.ftile span{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.ftile b{font-size:.98rem;font-family:var(--f-mono);overflow-wrap:anywhere} .ftile b small{font-weight:400;color:var(--muted)}
+.ftile b.txt{font-family:inherit;font-size:.92rem}
+.ftile b.pos{color:var(--win)} .ftile b.neg{color:var(--loss)}
+@media (max-width:700px){.ftiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+html.mobile .ftiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+.f-more>summary{cursor:pointer;color:var(--muted);font-size:.88rem;padding:2px 0}
+.f-more[open]>summary{margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -382,15 +395,18 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
   </section>
   <section class="focus" aria-label="Fokus für heute">
     <div class="focus-head">
-      <div><h2>Fokus für heute</h2><p class="sub" id="focus-sub">Wird aus deiner Vorbereitung, deinem Konto und deinen letzten Fehlern berechnet.</p></div>
+      <div><h2>Fokus für heute</h2><p class="sub" id="focus-sub">Auf einen Blick: darfst du handeln, was ist das Ziel.</p></div>
       <div class="filters"><button type="button" class="btn small" id="ask-claude" hidden>Claude fragen</button>
       <button type="button" class="chip" id="ai-toggle" aria-pressed="true" hidden>Claude-Hilfe an</button></div>
     </div>
+    <div id="f-top"></div>
+    <details class="f-more"><summary>Alle Details</summary>
     <div class="focus-grid">
       <div class="fbox strat"><div class="label">Tagesstrategie</div><div id="f-strat"></div></div>
       <div class="fbox"><div class="label">Risiko &amp; Konto</div><ul id="f-risk"></ul></div>
       <div class="fbox"><div class="label">Disziplin</div><ul id="f-disc"></ul></div>
     </div>
+    </details>
     <div class="ai" id="ai-box" hidden><div class="label">Einschätzung von Claude</div><div id="ai-text"></div></div>
   </section>
   <section class="prep" aria-label="Tagesvorbereitung">
@@ -1175,10 +1191,23 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
     if(judged.length>=3){ const hit = judged.filter(([,v])=>v.prep.hit==='ja').length/judged.length;
       if(hit < .5) disc.push(['Deine Einschätzung lag zuletzt '+Math.round((1-hit)*100)+' % daneben. '+capF(unclr())+' kleines Ziel.','warn']); }
     disc.push(['Konto '+esc((limits[actKey()]&&limits[actKey()].name)||actKey())+' im Chart ausgewählt?','']); if(F().firstTrade) disc.push([esc(F().firstTrade),'']);
-    return {st, risk, disc};
+    return {st, risk, disc, l, buf, dayNet, nToday: all.filter(t=>t.date===date).length};
   }
   function renderFocus(){
-    const {st, risk, disc} = focusData();
+    const {st, risk, disc, l, buf, dayNet, nToday} = focusData();
+    const plain = t => String(t).replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
+    const stops = risk.filter(r=>r[1]==='stop').map(r=>plain(r[0]).replace(/ Heute kein Trade mehr\.?/,'').replace(/\.$/,''));
+    let banner;
+    if(stops.length) banner = '<div class="fstat stop"><b>Schluss für heute</b><span>'+esc([...new Set(stops)].join(' · '))+'</span></div>';
+    else if(st.warn.length) banner = '<div class="fstat warn"><b>Vorsicht</b><span>'+esc(st.warn[0])+'</span></div>';
+    else banner = '<div class="fstat ok"><b>Handel erlaubt</b><span>Halte dich an deinen Plan.</span></div>';
+    const tile = (k,v,c)=>'<div class="ftile"><span>'+k+'</span><b class="'+(c||'')+'">'+v+'</b></div>';
+    const tiles = '<div class="ftiles">'+tile('Ziel', esc(st.ziel), 'txt')+tile('Heute', money(dayNet)+' <small>· '+nToday+' Tr.</small>', dayNet>0?'pos':dayNet<0?'neg':'')+
+      tile('Daily Stop', l.stop?amt(l.stop):'–')+tile('Puffer', buf!=null?amt(buf):'–', buf!=null && l.stop && buf < l.stop*2.2 ? 'neg' : '')+'</div>';
+    let tips = [];
+    if(!stops.length){ tips = st.warn.slice(1).map(x=>['w',x]).concat(st.doo.slice(0,1).map(x=>['y',x]), st.dont.slice(0,1).map(x=>['n',x]));
+      const d0 = disc.find(r=>/Heute:/.test(r[0])); if(d0) tips.push(['w', 'Fehler-Fokus: '+plain(d0[0]).split('Heute:').pop().trim()]); }
+    $('#f-top').innerHTML = banner + tiles + (tips.length ? '<div class="do-dont ftips">'+tips.slice(0,3).map(([c,x])=>'<p class="'+c+'">'+(c==='w'?'⚠ ':'')+esc(x)+'</p>').join('')+'</div>' : '');
     $('#f-strat').innerHTML = '<dl class="kv"><dt>Kontext</dt><dd>'+esc(st.ctx)+'</dd><dt>Bias</dt><dd>'+esc(st.bias)+'</dd><dt>Ziel</dt><dd>'+esc(st.ziel)+'</dd></dl>'+
       '<div class="do-dont">'+st.doo.map(x=>'<p class="y">'+esc(x)+'</p>').join('')+st.dont.map(x=>'<p class="n">'+esc(x)+'</p>').join('')+st.warn.map(x=>'<p class="w">⚠ '+esc(x)+'</p>').join('')+'</div>';
     $('#f-risk').innerHTML = risk.map(([t,c])=>'<li class="'+c+'">'+t+'</li>').join('');
