@@ -409,8 +409,14 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
       <div class="prep-grid">
         <div class="prep-col">
           <div class="field"><span class="label">Grundstimmung</span>
-            <div class="seg pseg" data-p="mood"><button type="button" data-v="gut">Gut</button><button type="button" data-v="mittel">Mittel</button><button type="button" data-v="schlecht">Schlecht</button></div>
+            <div class="seg pseg" data-p="mood"><button type="button" data-v="schlecht">Nicht gut</button><button type="button" data-v="neutral">Neutral</button><button type="button" data-v="spitze">Spitze</button></div>
             <span class="hint" id="p-mood-hint">Wie fühlst du dich heute zum Handeln?</span></div>
+          <div class="field" id="p-goal-row" hidden><span class="label">Tagesziel bei schlechter Stimmung</span>
+            <div class="seg pseg" data-p="moodGoal"><button type="button" data-v="0">Kein Handel</button><button type="button" data-v="1-1">1 TP / 1 SL</button><button type="button" data-v="2-1">2 TP / 1 SL</button><button type="button" data-v="2-2">2 TP / 2 SL</button></div>
+            <span class="hint">Schluss, sobald eins davon erreicht ist (z. B. 2 TP <i>oder</i> 1 SL).</span></div>
+          <div class="field"><span class="label">Cash Open live beobachtet?</span>
+            <div class="seg pseg" data-p="open"><button type="button" data-v="ja">Ja</button><button type="button" data-v="nein">Nein, später gekommen</button></div>
+            <span class="hint" id="p-open-hint">Ohne Cash Open fehlt dir der Tagestyp: dann nur kleines Ziel.</span></div>
           <div class="field"><span class="label">Delta des Tages</span>
             <div class="seg pseg" data-p="delta"><button type="button" data-v="Long">Long</button><button type="button" data-v="Short">Short</button><button type="button" data-v="Neutral">Neutral</button></div></div>
           <div class="field"><span class="label">Volumenprofil (Vortag / Session)</span>
@@ -1099,10 +1105,15 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
   $('#dres-apply').addEventListener('click', ()=>{ setP('bias', $('#dres-apply').dataset.v); pDirty = true; pHints(); renderDres(); toast('Einschätzung übernommen. Speichern nicht vergessen.'); });
 
   // ---- Tagesvorbereitung
-  const P = {mood:null, delta:null, profile:null, bias:null, hit:null};
-  const moodCfg = () => S.mood || null;
-  const moodLimited = m => { const c = moodCfg(); return !!(c && m && (c.limitOn||[]).includes(m)); };
-  const todayMood = () => { const td = todayStr(); return (pLoadedFor===td ? P.mood : null) || (days[td] && days[td].prep && days[td].prep.mood) || null; }; let pShots = [], pDirty = false, pLoadedFor = null;
+  const P = {mood:null, moodGoal:null, open:null, delta:null, profile:null, bias:null, hit:null};
+  const moodLimited = m => m==='schlecht';
+  const prepOf = d => (pLoadedFor===d ? P : (days[d] && days[d].prep) || {});
+  const goalLbl = g => g==='0' ? 'kein Handel' : g ? g.split('-')[0]+' TP oder '+g.split('-')[1]+' SL, dann Schluss' : null;
+  // Prüft das Stimmungs-Tagesziel gegen die Trades des Tages → Text, wenn Schluss ist
+  function moodStop(list, pr){ if(!moodLimited(pr.mood) || !pr.moodGoal) return null;
+    if(pr.moodGoal==='0') return list.length ? 'Heute war „kein Handel“ geplant' : 'Heute kein Handel geplant';
+    const [tp, sl] = pr.moodGoal.split('-').map(Number), w = list.filter(t=>netOf(t)>0).length, l = list.filter(t=>netOf(t)<0).length;
+    if(w>=tp) return tp+' TP erreicht'; if(l>=sl) return sl+' SL erreicht'; return null; } let pShots = [], pDirty = false, pLoadedFor = null;
   const PROFILE_HINT = {'D':'D-Profil: spricht für einen Range-Tag.','P':'P-Profil: Käufer haben Kontrolle, eher Long.','b':'b-Profil: Verkäufer haben Kontrolle, eher Short.','B Long':'B-Profil Long: Trend nach oben, Range möglich.','B Short':'B-Profil Short: Trend nach unten, Range möglich.'};
   function setP(name, v){ P[name] = v; document.querySelectorAll('.pseg[data-p="'+name+'"] button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.v===v))); }
   // ---- Fokus für heute (Regeln aus deinem Plan, live aus den Eingaben)
@@ -1141,11 +1152,12 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
     }
     if((prof==='B Long' || prof==='B Short') && !conflict) st.doo.push('B-Profil: erst bestätigen lassen, ob der Trend nach dem Cash Open weiterläuft');
     if(!$('#p-scen-a').value.trim() && (prof||bias)) st.warn.push('Szenario A fehlt: in einem Satz „Wenn …, dann …“ aufschreiben.');
-    if(moodLimited(P.mood)){ const mc = moodCfg(); st.ziel = mc.ziel || ('max. '+(mc.maxTrades||1)+' Trade'); st.warn.unshift('Grundstimmung „'+P.mood+'“: '+(mc.text||'')); }
+    if(P.open==='nein'){ st.ziel = (l.small?'+'+amt(l.small):'kleines Ziel')+' (Cash Open nicht gesehen)'; st.warn.unshift('Cash Open verpasst: Tagestyp unklar → nur kleines Ziel, keine Runner.'); }
+    if(moodLimited(P.mood)){ st.ziel = goalLbl(P.moodGoal) || 'Tagesziel wählen (Stimmung nicht gut)'; st.warn.unshift(P.moodGoal ? 'Stimmung nicht gut → heute: '+goalLbl(P.moodGoal)+'.' : 'Stimmung nicht gut → unter „Tagesziel bei schlechter Stimmung“ festlegen, was heute reicht.'); }
     // ---- Risiko & Konto: nur Menge und Grenzen, keine Setup-Regeln
     const risk = [];
     if(l.stop && dayNet <= -l.stop) risk.push(['<b>Daily Stop erreicht.</b> Heute kein Trade mehr.','stop']);
-    { const n = all.filter(t=>t.date===date).length, mc = moodCfg(); if(moodLimited(P.mood) && n >= (mc.maxTrades||1)) risk.push(['<b>Stimmungs-Limit erreicht</b> ('+n+' Trade'+(n>1?'s':'')+'). Heute kein Trade mehr.','stop']); }
+    { const ms = moodStop(all.filter(t=>t.date===date), P); if(ms) risk.push(['<b>'+ms+'.</b> Heute kein Trade mehr.','stop']); }
     if(buf!=null){
       const days = l.stop ? buf/l.stop : null;
       risk.push(['Puffer bis Liquidation: <b>'+amt(buf)+'</b>'+(days!=null?' (≈ '+days.toFixed(1).replace('.',',')+' volle Verlusttage)':''), days!=null && days<2.2 ? 'warn' : '']);
@@ -1213,9 +1225,10 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
     const name = el.dataset.p; setP(name, P[name]===b.dataset.v ? null : b.dataset.v); pDirty = true; pHints(); renderFocus(); renderAccts(); moodHint();
   }));
   $('#prep').addEventListener('input', ()=>{ pDirty = true; });
-  function moodHint(){ const c = moodCfg(), el = $('#p-mood-hint'); if(!el) return;
-    el.textContent = (c && moodLimited(P.mood)) ? (c.text || 'Heute nur 1 Trade.') : 'Wie fühlst du dich heute zum Handeln?';
-    el.style.color = (c && moodLimited(P.mood)) ? 'var(--warn)' : ''; }
+  function moodHint(){ const el = $('#p-mood-hint'); if(!el) return; const bad = moodLimited(P.mood);
+    $('#p-goal-row').hidden = !bad;
+    el.textContent = bad ? 'Nicht gut: anderes Ziel als sonst. Leg unten fest, was heute reicht.' : P.mood==='spitze' ? 'Spitze: normaler Plan, trotzdem Regeln einhalten.' : 'Wie fühlst du dich heute zum Handeln?';
+    el.style.color = bad ? 'var(--warn)' : ''; }
   function renderPShots(){
     $('#p-shots').innerHTML = pShots.map((s,i)=>'<span class="shot-x"><button type="button" data-img="'+esc(s.id)+'" data-cap="Analyse"><img src="'+blob(esc(s.id))+'" alt="Analyse-Screenshot '+(i+1)+'"></button><button type="button" class="rm" data-prm="'+i+'" aria-label="Screenshot entfernen">✕</button></span>').join('');
   }
@@ -1241,7 +1254,7 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
     const date = $('#p-date').value || todayStr();
     if(!force && pDirty && pLoadedFor===date) return;
     const p = (days[date] && days[date].prep) || {};
-    setP('mood', p.mood||null); setP('delta', p.delta||null); setP('profile', p.profile||null); setP('bias', p.bias||null); setP('hit', p.hit||null);
+    setP('mood', p.mood||null); setP('moodGoal', p.moodGoal||null); setP('open', p.open||null); setP('delta', p.delta||null); setP('profile', p.profile||null); setP('bias', p.bias||null); setP('hit', p.hit||null);
     setChecked('#chk-d', (p.chkD||[]).map(String)); setChecked('#chk-r', (p.chkR||[]).map(String)); renderDres();
     $('#p-levels').value = p.levels||''; $('#p-scen-a').value = p.scenA||''; $('#p-scen-b').value = p.scenB||'';
     $('#p-notes').value = p.notes||''; $('#p-review').value = p.review||'';
@@ -1254,7 +1267,7 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
     e.preventDefault();
     if(!db){ $('#p-msg').textContent='Keine Verbindung zum Speicher.'; return; }
     const date = $('#p-date').value || todayStr();
-    const prep = {mood:P.mood, delta:P.delta, profile:P.profile, bias:P.bias, hit:P.hit, chkD:getChecked('#chk-d').map(Number), chkR:getChecked('#chk-r').map(Number), cls:dClass(),
+    const prep = {mood:P.mood, moodGoal:P.moodGoal, open:P.open, delta:P.delta, profile:P.profile, bias:P.bias, hit:P.hit, chkD:getChecked('#chk-d').map(Number), chkR:getChecked('#chk-r').map(Number), cls:dClass(),
       levels:$('#p-levels').value.trim(), scenA:$('#p-scen-a').value.trim(), scenB:$('#p-scen-b').value.trim(),
       notes:$('#p-notes').value.trim(), review:$('#p-review').value.trim(), shots:pShots.slice(), updatedAt:Date.now()};
     $('#p-save').disabled = true;
@@ -1415,8 +1428,8 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
       }
       let streak=0; for(let i=list.length-1;i>=0;i--){ if(list[i].exit==='SL') streak++; else break; }
       let pill;
-      const mLim = moodLimited(todayMood()) && list.length >= ((moodCfg()||{}).maxTrades||1);
-      if(mLim) pill='<span class="pill stop">Stimmung nicht gut · '+list.length+' Trade erledigt · Schluss für heute</span>';
+      const mLim = moodStop(list, prepOf(td));
+      if(mLim) pill='<span class="pill stop">Stimmung: '+mLim+' · Schluss für heute</span>';
       else if(stop && net <= -stop) pill='<span class="pill stop">Daily Stop erreicht · Schluss für heute</span>';
       else if(target && net >= target) pill='<span class="pill ok">Tagesziel erreicht · Feierabend</span>';
       else if(streak>=3) pill='<span class="pill stop">3 SL in Folge · Schluss für heute</span>';
