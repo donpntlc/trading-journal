@@ -348,8 +348,8 @@ html.mobile .ftiles{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 .card{min-width:0}
 table.tlist td{white-space:nowrap}
-@media (max-width:700px){table.tlist th:nth-child(4),table.tlist td:nth-child(4){display:none}}
-html.mobile table.tlist th:nth-child(4),html.mobile table.tlist td:nth-child(4){display:none}
+.card{container-type:inline-size}
+@container (max-width:480px){table.tlist td.su{display:none} table.tlist th:nth-child(4):not(:nth-last-child(2)){display:none}}
 </style>
 </head>
 <body>
@@ -1532,7 +1532,8 @@ html.mobile table.tlist th:nth-child(4),html.mobile table.tlist td:nth-child(4){
     return ()=>false; };
   function tradeRows(ts){
     const sd = d => { const [y,m,dd]=d.split('-'); return new Date(+y,+m-1,+dd).toLocaleDateString('de-CH',{weekday:'short',day:'2-digit',month:'2-digit'}); };
-    return (tbl(['Tag','Zeit','Richtung','Setup','Ticks','Ergebnis'], ts.map(t=>'<tr data-tid="'+esc(t.id)+'"><td>'+esc(sd(t.date))+'</td><td class="num">'+esc((t.time||'').slice(0,5))+'</td><td>'+esc(t.dir)+'</td><td>'+esc(t.setup? t.setup+' · '+(t.mode==='Runner'?'Runner':'Scalp') : '–')+'</td><td class="num '+(t.ticks<0?'neg':'pos')+'">'+signed(t.ticks)+'</td><td class="num '+(netOf(t)<0?'neg':'pos')+'">'+money(netOf(t))+'</td></tr>'))).replace('<table>','<table class="tlist">');
+    const hasSu = ts.some(t=>t.setup);
+    return (tbl(['Tag','Zeit','Richtung'].concat(hasSu?['Setup']:[],['Ticks','Ergebnis']), ts.map(t=>'<tr data-tid="'+esc(t.id)+'"><td>'+esc(sd(t.date))+'</td><td class="num">'+esc((t.time||'').slice(0,5))+'</td><td>'+esc(t.dir)+'</td>'+(hasSu?'<td class="su">'+esc(t.setup? t.setup+' · '+(t.mode==='Runner'?'Runner':'Scalp') : '–')+'</td>':'')+'<td class="num '+(t.ticks<0?'neg':'pos')+'">'+signed(t.ticks)+'</td><td class="num '+(netOf(t)<0?'neg':'pos')+'">'+money(netOf(t))+'</td></tr>'))).replace('<table>','<table class="tlist">');
   }
   function showCat(cat){
     anaCat = cat; const ts = anaList.filter(CAT_FN(cat)).sort((a,b)=>(b.sort||'').localeCompare(a.sort||''));
