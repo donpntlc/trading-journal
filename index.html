@@ -408,6 +408,9 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
             </div></div></div>
       <div class="prep-grid">
         <div class="prep-col">
+          <div class="field"><span class="label">Grundstimmung</span>
+            <div class="seg pseg" data-p="mood"><button type="button" data-v="gut">Gut</button><button type="button" data-v="mittel">Mittel</button><button type="button" data-v="schlecht">Schlecht</button></div>
+            <span class="hint" id="p-mood-hint">Wie fühlst du dich heute zum Handeln?</span></div>
           <div class="field"><span class="label">Delta des Tages</span>
             <div class="seg pseg" data-p="delta"><button type="button" data-v="Long">Long</button><button type="button" data-v="Short">Short</button><button type="button" data-v="Neutral">Neutral</button></div></div>
           <div class="field"><span class="label">Volumenprofil (Vortag / Session)</span>
@@ -1096,7 +1099,10 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
   $('#dres-apply').addEventListener('click', ()=>{ setP('bias', $('#dres-apply').dataset.v); pDirty = true; pHints(); renderDres(); toast('Einschätzung übernommen. Speichern nicht vergessen.'); });
 
   // ---- Tagesvorbereitung
-  const P = {delta:null, profile:null, bias:null, hit:null}; let pShots = [], pDirty = false, pLoadedFor = null;
+  const P = {mood:null, delta:null, profile:null, bias:null, hit:null};
+  const moodCfg = () => S.mood || null;
+  const moodLimited = m => { const c = moodCfg(); return !!(c && m && (c.limitOn||[]).includes(m)); };
+  const todayMood = () => { const td = todayStr(); return (pLoadedFor===td ? P.mood : null) || (days[td] && days[td].prep && days[td].prep.mood) || null; }; let pShots = [], pDirty = false, pLoadedFor = null;
   const PROFILE_HINT = {'D':'D-Profil: spricht für einen Range-Tag.','P':'P-Profil: Käufer haben Kontrolle, eher Long.','b':'b-Profil: Verkäufer haben Kontrolle, eher Short.','B Long':'B-Profil Long: Trend nach oben, Range möglich.','B Short':'B-Profil Short: Trend nach unten, Range möglich.'};
   function setP(name, v){ P[name] = v; document.querySelectorAll('.pseg[data-p="'+name+'"] button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.v===v))); }
   // ---- Fokus für heute (Regeln aus deinem Plan, live aus den Eingaben)
@@ -1135,9 +1141,11 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
     }
     if((prof==='B Long' || prof==='B Short') && !conflict) st.doo.push('B-Profil: erst bestätigen lassen, ob der Trend nach dem Cash Open weiterläuft');
     if(!$('#p-scen-a').value.trim() && (prof||bias)) st.warn.push('Szenario A fehlt: in einem Satz „Wenn …, dann …“ aufschreiben.');
+    if(moodLimited(P.mood)){ const mc = moodCfg(); st.ziel = mc.ziel || ('max. '+(mc.maxTrades||1)+' Trade'); st.warn.unshift('Grundstimmung „'+P.mood+'“: '+(mc.text||'')); }
     // ---- Risiko & Konto: nur Menge und Grenzen, keine Setup-Regeln
     const risk = [];
     if(l.stop && dayNet <= -l.stop) risk.push(['<b>Daily Stop erreicht.</b> Heute kein Trade mehr.','stop']);
+    { const n = all.filter(t=>t.date===date).length, mc = moodCfg(); if(moodLimited(P.mood) && n >= (mc.maxTrades||1)) risk.push(['<b>Stimmungs-Limit erreicht</b> ('+n+' Trade'+(n>1?'s':'')+'). Heute kein Trade mehr.','stop']); }
     if(buf!=null){
       const days = l.stop ? buf/l.stop : null;
       risk.push(['Puffer bis Liquidation: <b>'+amt(buf)+'</b>'+(days!=null?' (≈ '+days.toFixed(1).replace('.',',')+' volle Verlusttage)':''), days!=null && days<2.2 ? 'warn' : '']);
@@ -1202,9 +1210,12 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
   }
   document.querySelectorAll('.pseg').forEach(el=>el.addEventListener('click', e=>{
     const b = e.target.closest('button'); if(!b) return;
-    const name = el.dataset.p; setP(name, P[name]===b.dataset.v ? null : b.dataset.v); pDirty = true; pHints();
+    const name = el.dataset.p; setP(name, P[name]===b.dataset.v ? null : b.dataset.v); pDirty = true; pHints(); renderFocus(); renderAccts(); moodHint();
   }));
   $('#prep').addEventListener('input', ()=>{ pDirty = true; });
+  function moodHint(){ const c = moodCfg(), el = $('#p-mood-hint'); if(!el) return;
+    el.textContent = (c && moodLimited(P.mood)) ? (c.text || 'Heute nur 1 Trade.') : 'Wie fühlst du dich heute zum Handeln?';
+    el.style.color = (c && moodLimited(P.mood)) ? 'var(--warn)' : ''; }
   function renderPShots(){
     $('#p-shots').innerHTML = pShots.map((s,i)=>'<span class="shot-x"><button type="button" data-img="'+esc(s.id)+'" data-cap="Analyse"><img src="'+blob(esc(s.id))+'" alt="Analyse-Screenshot '+(i+1)+'"></button><button type="button" class="rm" data-prm="'+i+'" aria-label="Screenshot entfernen">✕</button></span>').join('');
   }
@@ -1230,12 +1241,12 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
     const date = $('#p-date').value || todayStr();
     if(!force && pDirty && pLoadedFor===date) return;
     const p = (days[date] && days[date].prep) || {};
-    setP('delta', p.delta||null); setP('profile', p.profile||null); setP('bias', p.bias||null); setP('hit', p.hit||null);
+    setP('mood', p.mood||null); setP('delta', p.delta||null); setP('profile', p.profile||null); setP('bias', p.bias||null); setP('hit', p.hit||null);
     setChecked('#chk-d', (p.chkD||[]).map(String)); setChecked('#chk-r', (p.chkR||[]).map(String)); renderDres();
     $('#p-levels').value = p.levels||''; $('#p-scen-a').value = p.scenA||''; $('#p-scen-b').value = p.scenB||'';
     $('#p-notes').value = p.notes||''; $('#p-review').value = p.review||'';
     pShots = Array.isArray(p.shots) ? p.shots.slice() : []; renderPShots();
-    pLoadedFor = date; pDirty = false; pHints();
+    pLoadedFor = date; pDirty = false; pHints(); moodHint();
   }
   $('#p-date').value = todayStr();
   $('#p-date').addEventListener('change', ()=>loadPrep(true));
@@ -1243,7 +1254,7 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
     e.preventDefault();
     if(!db){ $('#p-msg').textContent='Keine Verbindung zum Speicher.'; return; }
     const date = $('#p-date').value || todayStr();
-    const prep = {delta:P.delta, profile:P.profile, bias:P.bias, hit:P.hit, chkD:getChecked('#chk-d').map(Number), chkR:getChecked('#chk-r').map(Number), cls:dClass(),
+    const prep = {mood:P.mood, delta:P.delta, profile:P.profile, bias:P.bias, hit:P.hit, chkD:getChecked('#chk-d').map(Number), chkR:getChecked('#chk-r').map(Number), cls:dClass(),
       levels:$('#p-levels').value.trim(), scenA:$('#p-scen-a').value.trim(), scenB:$('#p-scen-b').value.trim(),
       notes:$('#p-notes').value.trim(), review:$('#p-review').value.trim(), shots:pShots.slice(), updatedAt:Date.now()};
     $('#p-save').disabled = true;
@@ -1404,7 +1415,9 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
       }
       let streak=0; for(let i=list.length-1;i>=0;i--){ if(list[i].exit==='SL') streak++; else break; }
       let pill;
-      if(stop && net <= -stop) pill='<span class="pill stop">Daily Stop erreicht · Schluss für heute</span>';
+      const mLim = moodLimited(todayMood()) && list.length >= ((moodCfg()||{}).maxTrades||1);
+      if(mLim) pill='<span class="pill stop">Stimmung nicht gut · '+list.length+' Trade erledigt · Schluss für heute</span>';
+      else if(stop && net <= -stop) pill='<span class="pill stop">Daily Stop erreicht · Schluss für heute</span>';
       else if(target && net >= target) pill='<span class="pill ok">Tagesziel erreicht · Feierabend</span>';
       else if(streak>=3) pill='<span class="pill stop">3 SL in Folge · Schluss für heute</span>';
       else if(stop && net <= -stop*0.66) pill='<span class="pill warn">Noch '+money(stop+net).replace('+','')+' bis Daily Stop</span>';
@@ -1957,7 +1970,7 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
       const d = s.exists && s.data(); if(d && d.rates){ RATES = Object.assign({USD:1}, d.rates); RATES_DATE = d.ratesDate || RATES_DATE; render(); pHints(); }
     }, ()=>{});
     db.doc('settings/strategy').onSnapshot(s=>{
-      S = (s.exists && s.data()) || {}; buildStrat(); render(); renderDres(); renderFocus(); planCheck();
+      S = (s.exists && s.data()) || {}; buildStrat(); render(); renderDres(); renderFocus(); planCheck(); moodHint();
     }, ()=>{});
     db.doc('settings/limits').onSnapshot(s=>{
       limits = (s.exists && s.data()) || {}; fillAcctSelect(); render(); pHints();
