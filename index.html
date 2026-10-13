@@ -346,6 +346,10 @@ html.mobile .ftiles{grid-template-columns:repeat(2,minmax(0,1fr))}
   .tbar{display:block;position:fixed;left:env(titlebar-area-x,0);top:env(titlebar-area-y,0);width:env(titlebar-area-width,100%);height:env(titlebar-area-height,32px);-webkit-app-region:drag;app-region:drag;background:var(--bg);z-index:90}
   body{padding-top:env(titlebar-area-height,32px)}
 }
+.card{min-width:0}
+table.tlist td{white-space:nowrap}
+@media (max-width:700px){table.tlist th:nth-child(4),table.tlist td:nth-child(4){display:none}}
+html.mobile table.tlist th:nth-child(4),html.mobile table.tlist td:nth-child(4){display:none}
 </style>
 </head>
 <body>
@@ -1527,7 +1531,8 @@ html.mobile .ftiles{grid-template-columns:repeat(2,minmax(0,1fr))}
     if(k==='prop') return t=>(t.props||[]).includes(v);
     return ()=>false; };
   function tradeRows(ts){
-    return tbl(['Tag','Zeit','Richtung','Setup','Ticks','Ergebnis'], ts.map(t=>'<tr data-tid="'+esc(t.id)+'"><td>'+esc(fmtDate(t.date))+'</td><td class="num">'+esc((t.time||'').slice(0,5))+'</td><td>'+esc(t.dir)+'</td><td>'+esc(t.setup? t.setup+' · '+(t.mode==='Runner'?'Runner':'Scalp') : '–')+'</td><td class="num '+(t.ticks<0?'neg':'pos')+'">'+signed(t.ticks)+'</td><td class="num '+(netOf(t)<0?'neg':'pos')+'">'+money(netOf(t))+'</td></tr>'));
+    const sd = d => { const [y,m,dd]=d.split('-'); return new Date(+y,+m-1,+dd).toLocaleDateString('de-CH',{weekday:'short',day:'2-digit',month:'2-digit'}); };
+    return (tbl(['Tag','Zeit','Richtung','Setup','Ticks','Ergebnis'], ts.map(t=>'<tr data-tid="'+esc(t.id)+'"><td>'+esc(sd(t.date))+'</td><td class="num">'+esc((t.time||'').slice(0,5))+'</td><td>'+esc(t.dir)+'</td><td>'+esc(t.setup? t.setup+' · '+(t.mode==='Runner'?'Runner':'Scalp') : '–')+'</td><td class="num '+(t.ticks<0?'neg':'pos')+'">'+signed(t.ticks)+'</td><td class="num '+(netOf(t)<0?'neg':'pos')+'">'+money(netOf(t))+'</td></tr>'))).replace('<table>','<table class="tlist">');
   }
   function showCat(cat){
     anaCat = cat; const ts = anaList.filter(CAT_FN(cat)).sort((a,b)=>(b.sort||'').localeCompare(a.sort||''));
