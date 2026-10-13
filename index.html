@@ -1192,6 +1192,9 @@ table.tlist td{white-space:nowrap}
     const risk = [];
     if(l.stop && dayNet <= -l.stop) risk.push(['<b>Daily Stop erreicht.</b> Heute kein Trade mehr.','stop']);
     { const ms = moodStop(all.filter(t=>t.date===date), P); if(ms) risk.push(['<b>'+ms+'.</b> Heute kein Trade mehr.','stop']); }
+    { const mx = S.maxSetups, n = all.filter(t=>t.date===date).length;
+      if(mx && n >= mx) risk.push(['<b>'+mx+' Setups erreicht.</b> Heute kein Trade mehr.','stop']);
+      else if(mx && n === mx-1) risk.push(['Noch <b>1 Setup</b> übrig heute.','warn']); }
     if(buf!=null){
       const days = l.stop ? buf/l.stop : null;
       risk.push(['Puffer bis Liquidation: <b>'+amt(buf)+'</b>'+(days!=null?' (≈ '+days.toFixed(1).replace('.',',')+' volle Verlusttage)':''), days!=null && days<2.2 ? 'warn' : '']);
@@ -1220,7 +1223,7 @@ table.tlist td{white-space:nowrap}
     else if(st.warn.length) banner = '<div class="fstat warn"><b>Vorsicht</b><span>'+esc(st.warn[0])+'</span></div>';
     else banner = '<div class="fstat ok"><b>Handel erlaubt</b><span>Halte dich an deinen Plan.</span></div>';
     const tile = (k,v,c)=>'<div class="ftile"><span>'+k+'</span><b class="'+(c||'')+'">'+v+'</b></div>';
-    const tiles = '<div class="ftiles">'+tile('Ziel', esc(st.ziel), 'txt')+tile('Heute', money(dayNet)+' <small>· '+nToday+' Tr.</small>', dayNet>0?'pos':dayNet<0?'neg':'')+
+    const tiles = '<div class="ftiles">'+tile('Ziel', esc(st.ziel), 'txt')+tile('Heute', money(dayNet)+' <small>· '+nToday+(S.maxSetups?'/'+S.maxSetups+' Setups':' Tr.')+'</small>', dayNet>0?'pos':dayNet<0?'neg':'')+
       tile('Daily Stop', l.stop?amt(l.stop):'–')+tile('Puffer', buf!=null?amt(buf):'–', buf!=null && l.stop && buf < l.stop*2.2 ? 'neg' : '')+'</div>';
     let tips = [];
     if(!stops.length){ tips = st.warn.slice(1).map(x=>['w',x]).concat(st.doo.slice(0,1).map(x=>['y',x]), st.dont.slice(0,1).map(x=>['n',x]));
@@ -1476,7 +1479,8 @@ table.tlist td{white-space:nowrap}
       let streak=0; for(let i=list.length-1;i>=0;i--){ if(list[i].exit==='SL') streak++; else break; }
       let pill;
       const mLim = moodStop(list, prepOf(td));
-      if(mLim) pill='<span class="pill stop">Stimmung: '+mLim+' · Schluss für heute</span>';
+      if(S.maxSetups && list.length >= S.maxSetups) pill='<span class="pill stop">'+S.maxSetups+' Setups erreicht · Schluss für heute</span>';
+      else if(mLim) pill='<span class="pill stop">Stimmung: '+mLim+' · Schluss für heute</span>';
       else if(stop && net <= -stop) pill='<span class="pill stop">Daily Stop erreicht · Schluss für heute</span>';
       else if(target && net >= target) pill='<span class="pill ok">Tagesziel erreicht · Feierabend</span>';
       else if(streak>=3) pill='<span class="pill stop">3 SL in Folge · Schluss für heute</span>';
