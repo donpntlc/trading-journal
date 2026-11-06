@@ -1,0 +1,21 @@
+# Hält das Supabase-Projekt aktiv, damit es im Gratis-Tarif nicht nach 7 Tagen pausiert wird.
+# Läuft alle 2 Tage automatisch und kann unter "Actions" auch von Hand gestartet werden.
+name: Supabase wach halten
+
+on:
+  schedule:
+    - cron: "17 6 */2 * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Anfrage an Supabase
+        env:
+          URL: https://jhycqjpeqkulefcjlmjw.supabase.co
+          KEY: sb_publishable_B_oXFs5Mc33AOUF7gPF2gg_opKKgkve
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" "$URL/rest/v1/trades?select=id&limit=1" -H "apikey: $KEY")
+          echo "Antwort: $code"
+          test "$code" -lt 500
