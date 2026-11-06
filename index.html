@@ -282,6 +282,28 @@ details.fold > div{margin-top:10px}
 .ana tr[data-cat]{cursor:pointer}
 .ana tr[data-cat]:hover td{background:var(--sunk)}
 .ana tr[data-cat] td:first-child::after{content:' ›';color:var(--muted)}
+.hm-ctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.hm-wrap{overflow-x:auto;padding-bottom:4px}
+.hm{display:grid;gap:4px;min-width:min-content}
+.hm .hd{font-size:11px;color:var(--muted);text-align:center;white-space:nowrap;align-self:end}
+.hm .rl{font-size:12px;color:var(--muted);align-self:center;padding-right:4px}
+.hm button.c{min-width:46px;height:44px;border:0;border-radius:6px;font:600 12px/1.1 inherit;font-variant-numeric:tabular-nums;color:var(--fg);background:var(--sunk);cursor:pointer;padding:2px}
+.hm button.c small{display:block;font-weight:400;font-size:10px;opacity:.75}
+.hm button.c.e{background:transparent;border:1px dashed var(--line);cursor:default;color:var(--muted)}
+.hm button.c:focus-visible{outline:2px solid var(--fg);outline-offset:1px}
+.cal{display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) minmax(0,1.1fr);gap:4px}
+.cal .hd{font-size:11px;color:var(--muted);text-align:center}
+.cal button.d{min-height:58px;border:0;border-radius:6px;background:var(--sunk);color:var(--fg);font:12px/1.2 inherit;text-align:left;padding:5px 6px;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between}
+.cal button.d .n{font-size:11px;color:var(--muted)}
+.cal button.d b{font-variant-numeric:tabular-nums;font-size:13px}
+.cal button.d.out{opacity:.35}
+.cal button.d.e{cursor:default;background:transparent;border:1px dashed var(--line)}
+.cal .wk{border-radius:6px;padding:5px 6px;background:var(--surface);border:1px solid var(--line);display:flex;flex-direction:column;justify-content:center;font-size:11px;color:var(--muted)}
+.cal .wk b{font-size:13px;font-variant-numeric:tabular-nums}
+.cal-nav{display:flex;gap:6px;align-items:center}
+.cal-nav b{min-width:120px;text-align:center}
+.hm-sum{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:13px}
+.hm-sum span{color:var(--muted)} .hm-sum b{color:var(--fg);font-variant-numeric:tabular-nums}
 tr[data-tid]{cursor:pointer}
 tr[data-tid]:hover td{background:var(--sunk)}
 
@@ -330,6 +352,15 @@ html.viewer :is(#prep,#form) :is(input,textarea,select){background:transparent}
 .ov-more[open]{gap:10px}
 .fstat{display:grid;gap:2px;padding:12px 14px;border-radius:8px;font-size:.92rem}
 .fstat b{font-size:1.15rem}
+.lk-banner{margin:0 0 12px}
+.lk-sess{display:grid;gap:6px;margin:6px 0}
+.lk-sess .r{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) auto;gap:6px;align-items:center}
+.lk-sess input{min-width:0}
+.lk-lim{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+@media (max-width:560px){.lk-lim{grid-template-columns:1fr 1fr}}
+.lk-state{padding:8px 10px;border-radius:8px;font-size:.86rem}
+.lk-state.on{background:var(--loss-bg);color:var(--loss)} .lk-state.free{background:var(--sunk);color:var(--muted)}
+fieldset.lk{border:0;padding:0;margin:0;min-width:0;display:grid;gap:8px}
 .fstat.ok{background:var(--win-bg);color:var(--win)} .fstat.warn{background:var(--warn-bg);color:var(--warn)} .fstat.stop{background:var(--loss-bg);color:var(--loss)}
 .ftiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
 .ftile{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:grid;gap:2px;min-width:0}
@@ -391,6 +422,7 @@ table.tlist td{white-space:nowrap}
 
 
   <div class="tab" data-panel="heute">
+  <div class="fstat stop lk-banner" id="lk-banner" hidden role="status"></div>
   <section class="limits" aria-label="Heute pro Konto">
     <div class="limits-head">
       <h2 id="today-title">Heute</h2>
@@ -623,6 +655,19 @@ table.tlist td{white-space:nowrap}
       <p class="hint">Mausrad: zoomen · Ziehen: verschieben · An der Preisachse links ziehen oder Shift+Mausrad: Skala ändern · Doppelklick: zurücksetzen</p>
       <div class="perf-wrap"><canvas id="perf-cv" role="img" aria-label="Kontoverlauf mit Auszahlungsziel und Liquidationsgrenze"></canvas></div>
     </section>
+    <section class="card">
+      <div class="sec-title"><div><h2>Wann bist du stark?</h2><p class="sub" id="hm-sub">Tageszeit × Wochentag – Ergebnis netto. Antippen zeigt die Trades.</p></div>
+        <div class="hm-ctl"><div class="seg" id="hm-val" aria-label="Wert"><button type="button" data-v="sum" aria-pressed="true">Summe</button><button type="button" data-v="avg">Ø Trade</button><button type="button" data-v="wr">Treffer</button></div>
+          <div class="seg" id="hm-step" aria-label="Raster"><button type="button" data-v="60" aria-pressed="true">1 h</button><button type="button" data-v="30">30 min</button></div></div></div>
+      <div class="hm-wrap"><div class="hm" id="hm"></div></div>
+      <div class="hm-sum" id="hm-sum"></div>
+    </section>
+    <section class="card">
+      <div class="sec-title"><div><h2>Kalender</h2><p class="sub">Ergebnis pro Tag und Woche (netto, alle echten Konten). Antippen zeigt die Trades.</p></div>
+        <div class="cal-nav"><button type="button" class="btn small" id="cal-prev" aria-label="Vorheriger Monat">‹</button><b id="cal-title"></b><button type="button" class="btn small" id="cal-next" aria-label="Nächster Monat">›</button></div></div>
+      <div class="cal" id="cal"></div>
+      <div class="hm-sum" id="cal-sum"></div>
+    </section>
     <div class="ana">
       <div class="card"><h2>Teuerste Fehler</h2><p class="sub">Punkte = Anzahl × Gewicht (3 P schwer, 2 P mittel). Hier liegt dein größter Hebel.</p><div id="ana-errs"></div></div>
       <div class="card"><h2>Nach Situation („Wo?“)</h2><p class="sub">Wo funktionieren deine Setups, wo nicht?</p><div id="ana-ctx"></div></div>
@@ -645,6 +690,27 @@ table.tlist td{white-space:nowrap}
   <div class="set-sec">
     <div class="label">Darstellung</div>
     <div class="seg" id="theme-seg" aria-label="Farbe"><button type="button" data-v="light">☀ Hell</button><button type="button" data-v="dark">☾ Dunkel</button><button type="button" data-v="auto">◐ Wie System</button></div>
+  </div>
+  <div class="set-sec" id="lk-sec">
+    <div class="label">Auto-Sperre</div>
+    <p class="hint">Erreichst du ein Limit, sperrt der ATAS-Indikator den Handel bis zum Start der nächsten Session: Sobald alle Positionen geschlossen sind, erscheint „Session fertig“ und ATAS schließt sich. Leere Felder = kein Limit. Während einer Sperre lässt sich hier nichts ändern.</p>
+    <div class="lk-state free" id="lk-state">Keine Sperre aktiv.</div>
+    <fieldset class="lk" id="lk-fs">
+      <label class="mode-auto"><input type="checkbox" id="lk-on"> Auto-Sperre aktiv</label>
+      <div class="label">Sessions (deine Uhrzeit)</div>
+      <div class="lk-sess" id="lk-sess"></div>
+      <div><button type="button" class="btn small" id="lk-add">+ Session</button></div>
+      <div class="label">Sperren, wenn in einer Session …</div>
+      <div class="lk-lim">
+        <label class="field"><span class="label">Setups erreicht</span><input type="number" id="lk-setups" min="0" step="1" inputmode="numeric" placeholder="z. B. 3"></label>
+        <label class="field"><span class="label">Verlust $</span><input type="number" id="lk-loss" min="0" step="10" inputmode="numeric" placeholder="–"></label>
+        <label class="field"><span class="label">Gewinn $</span><input type="number" id="lk-win" min="0" step="10" inputmode="numeric" placeholder="–"></label>
+        <label class="field"><span class="label">Tagesverlust $ (bis morgen)</span><input type="number" id="lk-dayloss" min="0" step="10" inputmode="numeric" placeholder="–"></label>
+      </div>
+      <label class="mode-auto"><input type="checkbox" id="lk-close"> ATAS bei Sperre automatisch schließen (sonst nur Hinweis im Chart)</label>
+      <div class="actions"><button type="button" class="btn small primary" id="lk-save">Sperre speichern</button></div>
+    </fieldset>
+    <p class="msg" id="lk-msg" role="status"></p>
   </div>
   <div class="set-sec">
     <div class="label">Konto</div>
@@ -735,7 +801,7 @@ table.tlist td{white-space:nowrap}
     if(error){ console.error(error); return; }
     L[t].forEach(fn => fn(data));
   }
-  const later = t => { clearTimeout(timers[t]); timers[t] = setTimeout(() => emit(t), 150); };
+  const later = t => { if(!L[t]) return; clearTimeout(timers[t]); timers[t] = setTimeout(() => emit(t), 150); };
   const chk = r => { if(r.error) throw r.error; return r; };
   const db = {
     collection(name){
@@ -869,7 +935,8 @@ table.tlist td{white-space:nowrap}
     }
   });
 
-  window.SBJ = { ready: () => ready, assets, blobUrl, backup, importBackup, signOut: () => sb.auth.signOut(), shares, viewer: false };
+  const lockState = async () => { const r = await sb.from('lock_state').select('until,reason,session').maybeSingle(); return r.error ? null : r.data; };
+  window.SBJ = { ready: () => ready, assets, blobUrl, backup, importBackup, signOut: () => sb.auth.signOut(), shares, viewer: false, lockState };
 })();
 
 </script>
@@ -1527,20 +1594,97 @@ table.tlist td{white-space:nowrap}
   // ---- Auswertung
   function tbl(head, rows){ return '<div class="scroll"><table><thead><tr>'+head.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'+rows.join('')+'</tbody></table></div>'; }
   let anaList = [], anaCat = null;
-  const CAT_TITLE = c => { const [k,v] = c.split(':'); return k==='err' ? 'Fehler: '+(ERR[v]?ERR[v].label:v) : k==='ctx' ? 'Wo: '+v : k==='setup' ? 'Setup: '+v : k==='prop' ? 'Eigenschaft: '+v : v; };
+  const CAT_TITLE = c => { const [k,v] = c.split(':'); return k==='err' ? 'Fehler: '+(ERR[v]?ERR[v].label:v) : k==='ctx' ? 'Wo: '+v : k==='setup' ? 'Setup: '+v : k==='prop' ? 'Eigenschaft: '+v : k==='slot' ? (()=>{ const [wd,m0,st] = c.slice(5).split('|').map(Number); return WD[wd]+' '+hhmm(m0)+'–'+hhmm(m0+st); })() : k==='day' ? fmtDate(v) : k==='wk' ? 'Woche ab '+fmtDate(v) : v; };
   const CAT_FN = c => { const i = c.indexOf(':'), k = c.slice(0,i), v = c.slice(i+1);
     if(k==='err') return t=>(t.errs||[]).includes(v);
     if(k==='ctx') return t=>t.ctx===v;
     if(k==='setup') return t=>t.setup && (t.setup+' · '+(t.mode==='Runner'?'Runner':'Scalp'))===v;
     if(k==='prop') return t=>(t.props||[]).includes(v);
+    if(k==='slot'){ const [wd,m0,st] = v.split('|').map(Number); return t=>wdOf(t.date)===wd && (()=>{ const m = minOf(t.time); return m!=null && m>=m0 && m<m0+st; })(); }
+    if(k==='day') return t=>t.date===v && t.acct!=='Demo';
+    if(k==='wk') return t=>t.acct!=='Demo' && mondayOf(t.date)===v;
     return ()=>false; };
+  const WD = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+  const wdOf = d => { if(!d) return -1; const [y,m,dd] = d.split('-'); return new Date(+y,+m-1,+dd).getDay(); };
+  const minOf = s => { if(!s) return null; const [h,m] = s.split(':'); return (+h)*60 + (+m||0); };
+  const hhmm = m => String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+  const mondayOf = d => { const [y,m,dd] = d.split('-'); const x = new Date(+y,+m-1,+dd); x.setDate(x.getDate()-((x.getDay()+6)%7)); return isoDay(x); };
+  const hmColor = (v, max) => { if(!v || !max) return ''; const p = Math.round(12 + Math.min(1, Math.abs(v)/max)*58); return 'background:color-mix(in srgb, var('+(v>0?'--win':'--loss')+') '+p+'%, var(--surface))'; };
+  const hm = {val:'sum', step:60};
+  try{ const s = JSON.parse(localStorage.getItem('nqj-hm')||'{}'); if(s.val) hm.val = s.val; if(s.step) hm.step = +s.step; }catch(e){}
+  function drawHeat(list){
+    const box = $('#hm'); if(!box) return;
+    const ts = list.filter(t=>t.acct!=='Demo' && minOf(t.time)!=null);
+    document.querySelectorAll('#hm-val button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.v===hm.val)));
+    document.querySelectorAll('#hm-step button').forEach(b=>b.setAttribute('aria-pressed', String(+b.dataset.v===hm.step)));
+    if(!ts.length){ box.style.gridTemplateColumns = ''; box.innerHTML = '<p class="sub">Noch keine Trades in diesem Zeitraum.</p>'; $('#hm-sum').innerHTML = ''; return; }
+    const st = hm.step, cells = {};
+    let lo = 24*60, hi = 0;
+    ts.forEach(t=>{ const m = minOf(t.time), s = Math.floor(m/st)*st, wd = wdOf(t.date), k = wd+'|'+s;
+      lo = Math.min(lo, s); hi = Math.max(hi, s);
+      const c = cells[k] || (cells[k] = {n:0, w:0, usd:0}); c.n++; if(netOf(t)>0) c.w++; c.usd += netOf(t); });
+    const rows = [1,2,3,4,5].concat([0,6].filter(d=>ts.some(t=>wdOf(t.date)===d)));
+    const slots = []; for(let s=lo; s<=hi; s+=st) slots.push(s);
+    const val = c => hm.val==='avg' ? c.usd/c.n : hm.val==='wr' ? c.w/c.n*100 : c.usd;
+    const vals = Object.values(cells).map(c=> hm.val==='wr' ? val(c)-50 : val(c));
+    const max = Math.max(1, ...vals.map(Math.abs));
+    const fmt = c => hm.val==='wr' ? Math.round(val(c))+' %' : money(Math.round(val(c)));
+    let h = '<div></div>' + slots.map(s=>'<div class="hd">'+hhmm(s)+'</div>').join('');
+    rows.forEach(wd=>{ h += '<div class="rl">'+WD[wd]+'</div>';
+      slots.forEach(s=>{ const c = cells[wd+'|'+s];
+        if(!c){ h += '<button type="button" class="c e" tabindex="-1" aria-hidden="true"></button>'; return; }
+        const v = hm.val==='wr' ? val(c)-50 : val(c);
+        h += '<button type="button" class="c" data-cat="slot:'+wd+'|'+s+'|'+st+'" style="'+hmColor(v,max)+'" title="'+WD[wd]+' '+hhmm(s)+'–'+hhmm(s+st)+': '+c.n+' Trades, '+money(c.usd)+', '+Math.round(c.w/c.n*100)+' % Treffer">'+fmt(c)+'<small>'+c.n+' Tr.</small></button>'; }); });
+    box.style.gridTemplateColumns = 'auto repeat('+slots.length+', minmax(46px,1fr))';
+    box.innerHTML = h;
+    // beste / schlechteste Zeit
+    const bySlot = {}; ts.forEach(t=>{ const s = Math.floor(minOf(t.time)/st)*st; const c = bySlot[s] || (bySlot[s] = {n:0,usd:0}); c.n++; c.usd += netOf(t); });
+    const ent = Object.entries(bySlot).sort((a,b)=>b[1].usd-a[1].usd);
+    const byWd = {}; ts.forEach(t=>{ const d = wdOf(t.date); const c = byWd[d] || (byWd[d] = {n:0,usd:0}); c.n++; c.usd += netOf(t); });
+    const wdE = Object.entries(byWd).sort((a,b)=>b[1].usd-a[1].usd);
+    const lbl = s => hhmm(+s)+'–'+hhmm(+s+st);
+    $('#hm-sum').innerHTML = '<span>Beste Zeit: <b class="pos">'+lbl(ent[0][0])+' · '+money(ent[0][1].usd)+'</b></span>'+
+      (ent.length>1 && ent[ent.length-1][1].usd<0 ? '<span>Schwächste Zeit: <b class="neg">'+lbl(ent[ent.length-1][0])+' · '+money(ent[ent.length-1][1].usd)+'</b></span>' : '')+
+      '<span>Bester Tag: <b>'+WD[wdE[0][0]]+' · '+money(wdE[0][1].usd)+'</b></span>'+
+      (wdE.length>1 && wdE[wdE.length-1][1].usd<0 ? '<span>Schwächster Tag: <b>'+WD[wdE[wdE.length-1][0]]+' · '+money(wdE[wdE.length-1][1].usd)+'</b></span>' : '');
+  }
+  const segPick = (sel, key, cast) => document.querySelectorAll(sel+' button').forEach(b=>b.addEventListener('click', ()=>{ hm[key] = cast(b.dataset.v); try{ localStorage.setItem('nqj-hm', JSON.stringify(hm)); }catch(e){} drawHeat(anaList); }));
+  segPick('#hm-val', 'val', String); segPick('#hm-step', 'step', Number);
+  const cal = {y:null, m:null};
+  function drawCal(){
+    const box = $('#cal'); if(!box) return;
+    const real = trades.filter(t=>t.acct!=='Demo' && t.date);
+    if(cal.y==null){ const last = real.map(t=>t.date).sort().pop() || todayStr(); cal.y = +last.slice(0,4); cal.m = +last.slice(5,7)-1; }
+    const first = new Date(cal.y, cal.m, 1);
+    $('#cal-title').textContent = first.toLocaleDateString('de-CH', {month:'long', year:'numeric'});
+    const byDay = {}; real.forEach(t=>{ const c = byDay[t.date] || (byDay[t.date] = {n:0,usd:0}); c.n++; c.usd += netOf(t); });
+    const start = new Date(first); start.setDate(1-((first.getDay()+6)%7));
+    let h = ['Mo','Di','Mi','Do','Fr','Woche'].map(x=>'<div class="hd">'+x+'</div>').join('');
+    const weeks = [], d = new Date(start), lastDay = new Date(cal.y, cal.m+1, 0);
+    while(d <= lastDay){ const wk = []; for(let i=0;i<7;i++){ wk.push(isoDay(d)); d.setDate(d.getDate()+1); } weeks.push(wk); }
+    const mVals = weeks.flat().filter(x=>+x.slice(5,7)-1===cal.m).map(x=>byDay[x]).filter(Boolean);
+    const max = Math.max(1, ...mVals.map(c=>Math.abs(c.usd)));
+    let mSum = 0, mN = 0, mDays = 0, mWin = 0;
+    weeks.forEach(wk=>{ let wSum = 0, wN = 0;
+      wk.forEach((x,i)=>{ const c = byDay[x]; if(c){ wSum += c.usd; wN += c.n; }
+        if(i>4) return;
+        const inM = +x.slice(5,7)-1===cal.m, dn = +x.slice(8,10);
+        if(c && inM){ mSum += c.usd; mN += c.n; mDays++; if(c.usd>0) mWin++; }
+        h += c ? '<button type="button" class="d'+(inM?'':' out')+'" data-cat="day:'+x+'" style="'+hmColor(c.usd,max)+'"><span class="n">'+dn+'</span><b>'+money(Math.round(c.usd))+'</b><span class="n">'+c.n+' Tr.</span></button>'
+               : '<button type="button" class="d e'+(inM?'':' out')+'" tabindex="-1" aria-hidden="true"><span class="n">'+dn+'</span></button>'; });
+      h += '<div class="wk"'+(wN?' data-cat="wk:'+wk[0]+'" role="button" tabindex="0" style="cursor:pointer"':'')+'>'+(wN ? '<b class="'+(wSum<0?'neg':'pos')+'">'+money(Math.round(wSum))+'</b>'+wN+' Tr.' : '–')+'</div>'; });
+    box.innerHTML = h;
+    $('#cal-sum').innerHTML = mDays ? '<span>Monat: <b class="'+(mSum<0?'neg':'pos')+'">'+money(Math.round(mSum))+'</b></span><span>Handelstage: <b>'+mDays+'</b> ('+mWin+' im Plus)</span><span>Trades: <b>'+mN+'</b></span><span>Ø pro Tag: <b>'+money(Math.round(mSum/mDays))+'</b></span>' : '<span>Keine Trades in diesem Monat.</span>';
+  }
+  $('#cal-prev').addEventListener('click', ()=>{ cal.m--; if(cal.m<0){ cal.m=11; cal.y--; } drawCal(); });
+  $('#cal-next').addEventListener('click', ()=>{ cal.m++; if(cal.m>11){ cal.m=0; cal.y++; } drawCal(); });
   function tradeRows(ts){
     const sd = d => { const [y,m,dd]=d.split('-'); return new Date(+y,+m-1,+dd).toLocaleDateString('de-CH',{weekday:'short',day:'2-digit',month:'2-digit'}); };
     const hasSu = ts.some(t=>t.setup);
     return (tbl(['Tag','Zeit','Richtung'].concat(hasSu?['Setup']:[],['Ticks','Ergebnis']), ts.map(t=>'<tr data-tid="'+esc(t.id)+'"><td>'+esc(sd(t.date))+'</td><td class="num">'+esc((t.time||'').slice(0,5))+'</td><td>'+esc(t.dir)+'</td>'+(hasSu?'<td class="su">'+esc(t.setup? t.setup+' · '+(t.mode==='Runner'?'Runner':'Scalp') : '–')+'</td>':'')+'<td class="num '+(t.ticks<0?'neg':'pos')+'">'+signed(t.ticks)+'</td><td class="num '+(netOf(t)<0?'neg':'pos')+'">'+money(netOf(t))+'</td></tr>'))).replace('<table>','<table class="tlist">');
   }
   function showCat(cat){
-    anaCat = cat; const ts = anaList.filter(CAT_FN(cat)).sort((a,b)=>(b.sort||'').localeCompare(a.sort||''));
+    anaCat = cat; const ts = (/^(day|wk):/.test(cat) ? trades : anaList).filter(CAT_FN(cat)).sort((a,b)=>(b.sort||'').localeCompare(a.sort||''));
     const net = ts.reduce((a,t)=>a+netOf(t),0);
     $('#ana-detail-title').textContent = CAT_TITLE(cat)+' · '+ts.length+' Trade'+(ts.length===1?'':'s')+' · '+money(net);
     $('#ana-detail-body').innerHTML = ts.length ? tradeRows(ts) : '<p class="sub">Keine Trades in diesem Zeitraum.</p>';
@@ -1550,8 +1694,9 @@ table.tlist td{white-space:nowrap}
   document.querySelector('[data-panel=auswertung]').addEventListener('click', e=>{
     const tr = e.target.closest('tr[data-tid]');
     if(tr){ const t = trades.find(x=>x.id===tr.dataset.tid); if(t){ showTab('trades'); selectTrade(t); } return; }
-    const c = e.target.closest('tr[data-cat]'); if(c) showCat(c.dataset.cat);
+    const c = e.target.closest('tr[data-cat], button[data-cat], .wk[data-cat]'); if(c) showCat(c.dataset.cat);
   });
+  document.querySelector('[data-panel=auswertung]').addEventListener('keydown', e=>{ const c = e.target.closest('.wk[data-cat]'); if(c && (e.key==='Enter' || e.key===' ')){ e.preventDefault(); showCat(c.dataset.cat); } });
   const pv = {i0:null, i1:null, pScale:1, pShift:0, lines:true, acct:ACT, xs:1};
   try{ pv.acct = localStorage.getItem('nqj-perf-acct') || ACT; }catch(e){}
   function perfAccts(){ const s = new Set(ACCTS_FN().map(a=>a[0])); trades.forEach(t=>t.acct && s.add(t.acct)); return [...s]; }
@@ -1643,7 +1788,7 @@ table.tlist td{white-space:nowrap}
     cv.addEventListener('dblclick', perfReset);
   })();
   function renderAnalysis(list){
-    anaList = list; drawPerf();
+    anaList = list; drawPerf(); drawHeat(list); drawCal();
     // Fehler
     const ec = {};
     list.forEach(t=>(t.errs||[]).forEach(k=>{ const e = ec[k] || (ec[k]={n:0,usd:0}); e.n++; e.usd += netOf(t); }));
@@ -1667,7 +1812,7 @@ table.tlist td{white-space:nowrap}
     const best = sorted.filter(t=>netOf(t)>0).slice(0,5), worst = sorted.filter(t=>netOf(t)<0).reverse().slice(0,5);
     $('#ana-best').innerHTML = best.length ? tradeRows(best) : '<p class="sub">Noch keine Gewinner in diesem Zeitraum.</p>';
     $('#ana-worst').innerHTML = worst.length ? tradeRows(worst) : '<p class="sub">Keine Verlierer in diesem Zeitraum.</p>';
-    if(anaCat && !$('#ana-detail').hidden){ const ts = list.filter(CAT_FN(anaCat)).sort((a,b)=>(b.sort||'').localeCompare(a.sort||'')); $('#ana-detail-body').innerHTML = ts.length ? tradeRows(ts) : '<p class="sub">Keine Trades in diesem Zeitraum.</p>'; }
+    if(anaCat && !$('#ana-detail').hidden){ const ts = (/^(day|wk):/.test(anaCat) ? trades : list).filter(CAT_FN(anaCat)).sort((a,b)=>(b.sort||'').localeCompare(a.sort||'')); $('#ana-detail-body').innerHTML = ts.length ? tradeRows(ts) : '<p class="sub">Keine Trades in diesem Zeitraum.</p>'; }
     // Einschätzung
     const ds = Object.entries(days).filter(([d,v])=>v.prep && v.prep.bias && inFilter({date:d})).sort((a,b)=>b[0].localeCompare(a[0]));
     const hits = ds.filter(([,v])=>v.prep.hit==='ja').length, judged = ds.filter(([,v])=>v.prep.hit).length;
@@ -2022,6 +2167,43 @@ table.tlist td{white-space:nowrap}
   $('#cur-sel').addEventListener('change', e=>{ CUR = e.target.value; try{ localStorage.setItem('nqj-cur', CUR); }catch(err){} render(); pHints(); });
   resetForm(); render();
 
+  // ---- Auto-Sperre (sessionweise)
+  let LK = null, LKS = null;
+  const LK_DEF = { on:false, sessions:[{name:'Morgen',from:'09:00',to:'11:00'},{name:'Cash Open',from:'15:30',to:'17:00'},{name:'Abend',from:'18:00',to:'19:00'}], setups:3, loss:null, win:null, dayLoss:null, closeAtas:true, days:[1,2,3,4,5] };
+  const lkActive = () => !!(LKS && new Date(LKS.until) > new Date());
+  const lkUntil = () => { const d = new Date(LKS.until), n = new Date(); const same = d.toDateString() === n.toDateString();
+    return (same ? 'heute ' : d.toLocaleDateString('de-CH',{weekday:'short', day:'2-digit', month:'2-digit'})+' ') + d.toLocaleTimeString('de-CH',{hour:'2-digit', minute:'2-digit'}); };
+  function lkSessRow(s){ const r = document.createElement('div'); r.className = 'r';
+    r.innerHTML = '<input class="lk-n" placeholder="Name" maxlength="20" aria-label="Session-Name"><input type="time" class="lk-f" aria-label="Beginn"><input type="time" class="lk-t" aria-label="Ende"><button type="button" class="btn small lk-x" aria-label="Session entfernen">✕</button>';
+    r.querySelector('.lk-n').value = s.name||''; r.querySelector('.lk-f').value = s.from||''; r.querySelector('.lk-t').value = s.to||'';
+    r.querySelector('.lk-x').addEventListener('click', ()=>r.remove()); return r; }
+  function lkFill(){
+    const c = Object.assign({}, LK_DEF, LK||{}); const box = $('#lk-sess'); if(!box) return; box.innerHTML = '';
+    (c.sessions||[]).forEach(s=>box.appendChild(lkSessRow(s)));
+    $('#lk-on').checked = !!c.on; $('#lk-close').checked = c.closeAtas !== false;
+    $('#lk-setups').value = c.setups ?? ''; $('#lk-loss').value = c.loss ?? ''; $('#lk-win').value = c.win ?? ''; $('#lk-dayloss').value = c.dayLoss ?? '';
+    lkShow();
+  }
+  function lkShow(){
+    const on = lkActive(), st = $('#lk-state'), bn = $('#lk-banner');
+    $('#lk-fs').disabled = on;
+    st.className = 'lk-state ' + (on ? 'on' : 'free');
+    st.textContent = on ? 'Gesperrt bis '+lkUntil()+(LKS.reason ? ' · '+LKS.reason : '')+'. Bis dahin lässt sich nichts ändern.' : (LK && LK.on ? 'Auto-Sperre ist aktiv. Gerade keine Sperre.' : 'Auto-Sperre ist aus.');
+    bn.hidden = !on; if(on) bn.innerHTML = '<b>Session fertig ✓</b><span>Gesperrt bis '+esc(lkUntil())+(LKS.reason ? ' · '+esc(LKS.reason) : '')+'</span>';
+  }
+  async function lkPoll(){ if(!window.SBJ || !window.SBJ.lockState) return; try{ LKS = await window.SBJ.lockState(); }catch(e){ LKS = null; } lkShow(); }
+  $('#lk-add').addEventListener('click', ()=>$('#lk-sess').appendChild(lkSessRow({name:'', from:'', to:''})));
+  $('#lk-save').addEventListener('click', async ()=>{
+    await lkPoll(); if(lkActive()){ $('#lk-msg').textContent = 'Während der Sperre nicht änderbar.'; return; }
+    const num = id => { const v = $(id).value.trim(); return v === '' || +v <= 0 ? null : +v; };
+    const sessions = [...document.querySelectorAll('#lk-sess .r')].map(r=>({ name: r.querySelector('.lk-n').value.trim(), from: r.querySelector('.lk-f').value, to: r.querySelector('.lk-t').value })).filter(s=>s.from && s.to);
+    const bad = sessions.find(s=>s.to <= s.from); if(bad){ $('#lk-msg').textContent = 'Session „'+(bad.name||bad.from)+'“: Ende muss nach dem Beginn liegen.'; return; }
+    sessions.sort((a,b)=>a.from.localeCompare(b.from));
+    const cfg = Object.assign({}, LK_DEF, LK||{}, { on: $('#lk-on').checked, closeAtas: $('#lk-close').checked, sessions, setups: num('#lk-setups'), loss: num('#lk-loss'), win: num('#lk-win'), dayLoss: num('#lk-dayloss') });
+    if(cfg.on && !cfg.setups && !cfg.loss && !cfg.win && !cfg.dayLoss){ $('#lk-msg').textContent = 'Mindestens ein Limit eintragen (z. B. 3 Setups).'; return; }
+    try{ await db.doc('settings/lock').set(cfg); $('#lk-msg').textContent = 'Gespeichert.'+(cfg.on ? ' Gilt ab sofort für den ATAS-Indikator.' : ''); }catch(e){ $('#lk-msg').textContent = 'Speichern fehlgeschlagen.'; }
+  });
+
   // ---- Speicher verbinden
   (async ()=>{
     try{ db = await window.SBJ.ready(); }catch(e){ db = null; }
@@ -2045,6 +2227,9 @@ table.tlist td{white-space:nowrap}
     db.doc('settings/limits').onSnapshot(s=>{
       limits = (s.exists && s.data()) || {}; fillAcctSelect(); render(); pHints();
     }, ()=>{});
+    db.doc('settings/lock').onSnapshot(s=>{ LK = (s.exists && s.data()) || null; lkFill(); }, ()=>{});
+    if(VIEWER) $('#lk-sec').hidden = true;
+    lkPoll(); setInterval(lkPoll, 30000);
     assets = window.SBJ.assets;
     sampleFn = null; // „Claude fragen“ gibt es nur in der Claude-Version
     let aiOn = true; try{ aiOn = localStorage.getItem('nqj-ai') !== '0'; }catch(e){}

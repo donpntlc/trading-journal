@@ -84,3 +84,14 @@ begin
 end; $$;
 revoke all on function public.shared_journal(text) from public;
 grant execute on function public.shared_journal(text) to anon, authenticated;
+
+-- ---- Auto-Sperre: wird nur von der Funktion journal-status gesetzt (Service-Role), Nutzer darf nur lesen
+create table if not exists public.lock_state (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  until timestamptz not null,
+  reason text,
+  session text,
+  created_at timestamptz not null default now()
+);
+alter table public.lock_state enable row level security;
+create policy "lock_state lesen" on public.lock_state for select using (auth.uid() = user_id);
