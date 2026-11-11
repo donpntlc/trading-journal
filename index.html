@@ -588,8 +588,7 @@ table.tlist td{white-space:nowrap}
         <label class="field"><span class="label">Gefühl</span>
           <select id="f-emo"><option value="">–</option><option>Ruhig</option><option>Fokussiert</option><option>Zuversichtlich</option><option>Ungeduldig</option><option>Gestresst</option><option>FOMO</option><option>Frustriert</option><option>Rache-Trade</option></select></label>
       </div>
-      <label class="field"><span class="label">Ausstiegsgrund</span>
-        <select id="f-xr"><option value="">–</option><option>TP / SL nach Plan</option><option>Location erreicht</option><option>Kein Momentum mehr</option><option>Zu viel Gegendruck</option><option>Keine klare Übersicht mehr</option><option>Emotional</option></select></label>
+      <div class="field"><span class="label">Ausstiegsgrund <span class="hint">(mehrere möglich)</span></span><div class="chips" id="f-xr"><label><input type="checkbox" value="TP / SL nach Plan">TP / SL nach Plan</label><label><input type="checkbox" value="Location erreicht">Location erreicht</label><label><input type="checkbox" value="Kein Momentum mehr">Kein Momentum mehr</label><label><input type="checkbox" value="Zu viel Gegendruck">Zu viel Gegendruck</label><label><input type="checkbox" value="Keine klare Übersicht mehr">Keine klare Übersicht mehr</label><label><input type="checkbox" value="Emotional">Emotional</label></div></div>
       <div class="field"><span class="label">Eigenschaften &amp; Tags</span><div class="chips" id="f-props"></div></div>
       <details class="fold" id="fold-conf"><summary>Bestätigungen beim Einstieg</summary><div class="chips" id="f-conf"></div></details>
       <details class="fold" id="fold-errs" open><summary>Fehler in diesem Trade</summary><div class="errlist" id="f-errs"></div></details>
@@ -957,6 +956,7 @@ table.tlist td{white-space:nowrap}
   const capF = x => x ? x.charAt(0).toUpperCase()+x.slice(1) : x;
   const unclr = () => S.unclear || 'vorerst';
   const errPts = t => (t.errs||[]).reduce((a,k)=>a+((ERR[k]&&ERR[k].w)||0),0);
+  const xrList = t => Array.isArray(t.xr) ? t.xr : (t.xr ? [t.xr] : []);
   const getChecked = sel => [...document.querySelectorAll(sel+' input:checked')].map(i=>i.value);
   const setChecked = (sel, vals) => document.querySelectorAll(sel+' input').forEach(i=>{ i.checked = (vals||[]).includes(i.value); });
   document.getElementById('f-errs').addEventListener('change', ()=>{
@@ -1111,7 +1111,7 @@ table.tlist td{white-space:nowrap}
     $('#f-date').value = isoDay(now); $('#f-time').value = pad(now.getHours())+':'+pad(now.getMinutes());
     fillAcctSelect(); $('#f-acct').value = actKey();
     setSeg('dir',null); setSeg('setup',null); setSeg('mode',null); setSeg('ctx',null);
-    setChecked('#f-errs',[]); setChecked('#f-conf',[]); setChecked('#f-props',[]); $('#f-mkt').value='NQ'; $('#f-qty').value=1; $('#split').hidden = true; $('#f-xr').value='';
+    setChecked('#f-errs',[]); setChecked('#f-conf',[]); setChecked('#f-props',[]); $('#f-mkt').value='NQ'; $('#f-qty').value=1; $('#split').hidden = true; setChecked('#f-xr',[]);
     $('#form-title').textContent='Neuer Trade'; $('#save').textContent='Trade speichern';
     $('#del').hidden = true; $('#del-yes').hidden = true;
     renderFormShots(); planCheck(); setRaw(null);
@@ -1127,7 +1127,7 @@ table.tlist td{white-space:nowrap}
     $('#f-date').value=t.date||''; $('#f-time').value=t.time||''; fillAcctSelect(t.acct); $('#f-acct').value=t.acct||actKey();
     setSeg('dir',t.dir||null); setSeg('setup',t.setup||null); setSeg('mode',t.mode||null); setSeg('ctx',t.ctx||null);
     setChecked('#f-errs', t.errs); setChecked('#f-conf', t.conf); setChecked('#f-props', t.props); $('#f-mkt').value = mktOf(t); $('#f-qty').value = t.qty||1;
-    $('#split').hidden = !(Array.isArray(t.legs) && t.legs.length); $('#f-xr').value = t.xr||'';
+    $('#split').hidden = !(Array.isArray(t.legs) && t.legs.length); setChecked('#f-xr', xrList(t));
     $('#fold-conf').open = !!(t.conf&&t.conf.length);
     $('#f-delta').value = (t.delta ?? '');
     $('#f-exit').value=t.exit||'TP'; $('#f-ticks').value=(t.ticks ?? '');
@@ -1173,7 +1173,7 @@ table.tlist td{white-space:nowrap}
       delta: dv==='' ? null : Number(dv),
       exit: $('#f-exit').value, ticks, exitTime: prev.exitTime ?? null,
       rule: $('#f-rule').value, emo: $('#f-emo').value,
-      ctx: seg.ctx, xr: $('#f-xr').value, conf: getChecked('#f-conf'), errs: getChecked('#f-errs'), props: getChecked('#f-props'),
+      ctx: seg.ctx, xr: getChecked('#f-xr'), conf: getChecked('#f-conf'), errs: getChecked('#f-errs'), props: getChecked('#f-props'),
       note: $('#f-note').value.trim(), shots: formShots.slice(),
       sort: $('#f-date').value+'T'+$('#f-time').value,
       createdAt: prev.createdAt ?? Date.now(), updatedAt: Date.now()
@@ -2120,7 +2120,7 @@ table.tlist td{white-space:nowrap}
       market: mktOf(ts[0]), qty, entry: wavg(ts,'entry'), exitPrice: wavg(ts,'exitPrice'),
       pnl, fees: ts.reduce((a,t)=>a+(Number(t.fees)||0),0), ticks: Math.round(pnl/(tv*qty)),
       exit: ts.some(t=>t.exit==='SL') && pnl<0 ? 'SL' : ts.some(t=>t.exit==='TP') && pnl>0 ? 'TP' : 'Manuell',
-      setup: first('setup'), mode: first('mode'), ctx: first('ctx'), delta: first('delta'), xr: first('xr'), emo: first('emo'),
+      setup: first('setup'), mode: first('mode'), ctx: first('ctx'), delta: first('delta'), xr: [...new Set(ts.flatMap(xrList))], emo: first('emo'),
       rule: ts.some(t=>t.rule==='nein') ? 'nein' : ts.every(t=>t.rule==='ja') ? 'ja' : 'offen',
       errs: uni('errs'), props: uni('props'), conf: uni('conf'), shots: uni('shots'),
       note: ts.map(t=>t.note).filter(Boolean).join(' | '), source:'merged', sort: ts[0].sort,
