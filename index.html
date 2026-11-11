@@ -1286,7 +1286,8 @@ table.tlist td{white-space:nowrap}
     const plain = t => String(t).replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
     const stops = risk.filter(r=>r[1]==='stop').map(r=>plain(r[0]).replace(/ Heute kein Trade mehr\.?/,'').replace(/\.$/,''));
     let banner;
-    if(stops.length) banner = '<div class="fstat stop"><b>Schluss für heute</b><span>'+esc([...new Set(stops)].join(' · '))+'</span></div>';
+    if(lockedNow()) banner = '<div class="fstat stop"><b>Gesperrt</b><span>Bis '+esc(lkUntil())+(LKS.reason ? ' · '+esc(LKS.reason) : '')+'</span></div>';
+    else if(stops.length) banner = '<div class="fstat stop"><b>Schluss für heute</b><span>'+esc([...new Set(stops)].join(' · '))+'</span></div>';
     else if(st.warn.length) banner = '<div class="fstat warn"><b>Vorsicht</b><span>'+esc(st.warn[0])+'</span></div>';
     else banner = '<div class="fstat ok"><b>Handel erlaubt</b><span>Halte dich an deinen Plan.</span></div>';
     const tile = (k,v,c)=>'<div class="ftile"><span>'+k+'</span><b class="'+(c||'')+'">'+v+'</b></div>';
@@ -1546,7 +1547,8 @@ table.tlist td{white-space:nowrap}
       let streak=0; for(let i=list.length-1;i>=0;i--){ if(list[i].exit==='SL') streak++; else break; }
       let pill;
       const mLim = moodStop(list, prepOf(td));
-      if(S.maxSetups && list.length >= S.maxSetups) pill='<span class="pill stop">'+S.maxSetups+' Setups erreicht · Schluss für heute</span>';
+      if(lockedNow()) pill='<span class="pill stop">Gesperrt bis '+esc(lkUntil())+'</span>';
+      else if(S.maxSetups && list.length >= S.maxSetups) pill='<span class="pill stop">'+S.maxSetups+' Setups erreicht · Schluss für heute</span>';
       else if(mLim) pill='<span class="pill stop">Stimmung: '+mLim+' · Schluss für heute</span>';
       else if(stop && net <= -stop) pill='<span class="pill stop">Daily Stop erreicht · Schluss für heute</span>';
       else if(target && net >= target) pill='<span class="pill ok">Tagesziel erreicht · Feierabend</span>';
@@ -2169,6 +2171,7 @@ table.tlist td{white-space:nowrap}
 
   // ---- Auto-Sperre (sessionweise)
   let LK = null, LKS = null;
+  function lockedNow(){ try{ return lkActive(); }catch(e){ return false; } }
   const LK_DEF = { on:false, sessions:[{name:'Morgen',from:'09:00',to:'11:00'},{name:'Cash Open',from:'15:30',to:'17:00'},{name:'Abend',from:'18:00',to:'19:00'}], setups:3, loss:null, win:null, dayLoss:null, closeAtas:true, days:[1,2,3,4,5] };
   const lkActive = () => !!(LKS && new Date(LKS.until) > new Date());
   const lkUntil = () => { const d = new Date(LKS.until), n = new Date(); const same = d.toDateString() === n.toDateString();
@@ -2191,7 +2194,7 @@ table.tlist td{white-space:nowrap}
     st.textContent = on ? 'Gesperrt bis '+lkUntil()+(LKS.reason ? ' · '+LKS.reason : '')+'. Bis dahin lässt sich nichts ändern.' : (LK && LK.on ? 'Auto-Sperre ist aktiv. Gerade keine Sperre.' : 'Auto-Sperre ist aus.');
     bn.hidden = !on; if(on) bn.innerHTML = '<b>Session fertig ✓</b><span>Gesperrt bis '+esc(lkUntil())+(LKS.reason ? ' · '+esc(LKS.reason) : '')+'</span>';
   }
-  async function lkPoll(){ if(!window.SBJ || !window.SBJ.lockState) return; try{ LKS = await window.SBJ.lockState(); }catch(e){ LKS = null; } lkShow(); }
+  async function lkPoll(){ if(!window.SBJ || !window.SBJ.lockState) return; const was = lockedNow(); try{ LKS = await window.SBJ.lockState(); }catch(e){ LKS = null; } lkShow(); if(was !== lockedNow()){ render(); renderFocus(); } }
   $('#lk-add').addEventListener('click', ()=>$('#lk-sess').appendChild(lkSessRow({name:'', from:'', to:''})));
   $('#lk-save').addEventListener('click', async ()=>{
     await lkPoll(); if(lkActive()){ $('#lk-msg').textContent = 'Während der Sperre nicht änderbar.'; return; }
