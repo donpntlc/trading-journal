@@ -656,8 +656,8 @@ table.tlist td{white-space:nowrap}
     </section>
     <section class="card">
       <div class="sec-title"><div><h2>Wann bist du stark?</h2><p class="sub" id="hm-sub">Tageszeit × Wochentag – Ergebnis netto. Antippen zeigt die Trades.</p></div>
-        <div class="hm-ctl"><div class="seg" id="hm-val" aria-label="Wert"><button type="button" data-v="sum" aria-pressed="true">Summe</button><button type="button" data-v="avg">Ø Trade</button><button type="button" data-v="wr">Treffer</button></div>
-          <div class="seg" id="hm-step" aria-label="Raster"><button type="button" data-v="60" aria-pressed="true">1 h</button><button type="button" data-v="30">30 min</button></div></div></div>
+        <div class="hm-ctl"><div class="seg" id="hm-val" aria-label="Wert"><button type="button" data-v="sum" aria-pressed="true">Summe</button><button type="button" data-v="avg">Ø Trade</button><button type="button" data-v="wr">Treffer</button><button type="button" data-v="be">Break-Even</button><button type="button" data-v="loss">Verluste</button></div>
+          <div class="seg" id="hm-step" aria-label="Raster"><button type="button" data-v="60" aria-pressed="true">1 h</button><button type="button" data-v="30">30 min</button><button type="button" data-v="15">15 min</button></div></div></div>
       <div class="hm-wrap"><div class="hm" id="hm"></div></div>
       <div class="hm-sum" id="hm-sum"></div>
     </section>
@@ -671,6 +671,7 @@ table.tlist td{white-space:nowrap}
       <div class="card"><h2>Teuerste Fehler</h2><p class="sub">Punkte = Anzahl × Gewicht (3 P schwer, 2 P mittel). Hier liegt dein größter Hebel.</p><div id="ana-errs"></div></div>
       <div class="card"><h2>Nach Situation („Wo?“)</h2><p class="sub">Wo funktionieren deine Setups, wo nicht?</p><div id="ana-ctx"></div></div>
       <div class="card"><h2>Setup und Modus</h2><div id="ana-setup"></div></div>
+      <div class="card"><h2>Nach Lage zur Zone</h2><p class="sub">Automatisch aus deinen eingezeichneten Zonen im ATAS-Export. Breakout = an der äußeren Kante aus der Zone raus, Ablehnung = an der Kante abgeprallt. Ø Ticks ist unabhängig von der Kontraktzahl.</p><div id="ana-zone"></div></div>
       <div class="card"><h2>Nach Eigenschaft</h2><p class="sub">BIAS, Trend, Vola, News und deine Tags.</p><div id="ana-props"></div></div>
       <div class="card"><h2>Beste Trades</h2><div id="ana-best"></div></div>
       <div class="card"><h2>Schlechteste Trades</h2><div id="ana-worst"></div></div>
@@ -1596,12 +1597,13 @@ table.tlist td{white-space:nowrap}
   // ---- Auswertung
   function tbl(head, rows){ return '<div class="scroll"><table><thead><tr>'+head.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'+rows.join('')+'</tbody></table></div>'; }
   let anaList = [], anaCat = null;
-  const CAT_TITLE = c => { const [k,v] = c.split(':'); return k==='err' ? 'Fehler: '+(ERR[v]?ERR[v].label:v) : k==='ctx' ? 'Wo: '+v : k==='setup' ? 'Setup: '+v : k==='prop' ? 'Eigenschaft: '+v : k==='slot' ? (()=>{ const [wd,m0,st] = c.slice(5).split('|').map(Number); return WD[wd]+' '+hhmm(m0)+'–'+hhmm(m0+st); })() : k==='day' ? fmtDate(v) : k==='wk' ? 'Woche ab '+fmtDate(v) : v; };
+  const CAT_TITLE = c => { const [k,v] = c.split(':'); return k==='err' ? 'Fehler: '+(ERR[v]?ERR[v].label:v) : k==='ctx' ? 'Wo: '+v : k==='setup' ? 'Setup: '+v : k==='prop' ? 'Eigenschaft: '+v : k==='zone' ? 'Lage: '+v : k==='slot' ? (()=>{ const [wd,m0,st] = c.slice(5).split('|').map(Number); return WD[wd]+' '+hhmm(m0)+'–'+hhmm(m0+st); })() : k==='day' ? fmtDate(v) : k==='wk' ? 'Woche ab '+fmtDate(v) : v; };
   const CAT_FN = c => { const i = c.indexOf(':'), k = c.slice(0,i), v = c.slice(i+1);
     if(k==='err') return t=>(t.errs||[]).includes(v);
     if(k==='ctx') return t=>t.ctx===v;
     if(k==='setup') return t=>t.setup && (t.setup+' · '+(t.mode==='Runner'?'Runner':'Scalp'))===v;
     if(k==='prop') return t=>(t.props||[]).includes(v);
+    if(k==='zone') return t=>t.zone && t.zone.cls===v;
     if(k==='slot'){ const [wd,m0,st] = v.split('|').map(Number); return t=>wdOf(t.date)===wd && (()=>{ const m = minOf(t.time); return m!=null && m>=m0 && m<m0+st; })(); }
     if(k==='day') return t=>t.date===v && t.acct!=='Demo';
     if(k==='wk') return t=>t.acct!=='Demo' && mondayOf(t.date)===v;
@@ -1611,7 +1613,8 @@ table.tlist td{white-space:nowrap}
   const minOf = s => { if(!s) return null; const [h,m] = s.split(':'); return (+h)*60 + (+m||0); };
   const hhmm = m => String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
   const mondayOf = d => { const [y,m,dd] = d.split('-'); const x = new Date(+y,+m-1,+dd); x.setDate(x.getDate()-((x.getDay()+6)%7)); return isoDay(x); };
-  const hmColor = (v, max) => { if(!v || !max) return ''; const p = Math.round(12 + Math.min(1, Math.abs(v)/max)*58); return 'background:color-mix(in srgb, var('+(v>0?'--win':'--loss')+') '+p+'%, var(--surface))'; };
+  const isBE = t => t.exit==='BE' || (t.exit!=='TP' && t.exit!=='SL' && Math.abs(Number(t.ticks)||0) <= 8);
+  const hmColor = (v, max, cv) => { if(!v || !max) return ''; if(cv){ const p = Math.round(12 + Math.min(1, Math.abs(v)/max)*58); return 'background:color-mix(in srgb, var('+cv+') '+p+'%, var(--surface))'; } const p = Math.round(12 + Math.min(1, Math.abs(v)/max)*58); return 'background:color-mix(in srgb, var('+(v>0?'--win':'--loss')+') '+p+'%, var(--surface))'; };
   const hm = {val:'sum', step:60};
   try{ const s = JSON.parse(localStorage.getItem('nqj-hm')||'{}'); if(s.val) hm.val = s.val; if(s.step) hm.step = +s.step; }catch(e){}
   function drawHeat(list){
@@ -1624,23 +1627,27 @@ table.tlist td{white-space:nowrap}
     let lo = 24*60, hi = 0;
     ts.forEach(t=>{ const m = minOf(t.time), s = Math.floor(m/st)*st, wd = wdOf(t.date), k = wd+'|'+s;
       lo = Math.min(lo, s); hi = Math.max(hi, s);
-      const c = cells[k] || (cells[k] = {n:0, w:0, usd:0}); c.n++; if(netOf(t)>0) c.w++; c.usd += netOf(t); });
+      const c = cells[k] || (cells[k] = {n:0, w:0, usd:0, be:0, l:0, lusd:0}); const n = netOf(t); c.n++; c.usd += n;
+      if(n>0) c.w++; if(isBE(t)) c.be++; else if(n<0){ c.l++; c.lusd += n; } });
     const rows = [1,2,3,4,5].concat([0,6].filter(d=>ts.some(t=>wdOf(t.date)===d)));
     const slots = []; for(let s=lo; s<=hi; s+=st) slots.push(s);
-    const val = c => hm.val==='avg' ? c.usd/c.n : hm.val==='wr' ? c.w/c.n*100 : c.usd;
+    const val = c => hm.val==='avg' ? c.usd/c.n : hm.val==='wr' ? c.w/c.n*100 : hm.val==='be' ? c.be : hm.val==='loss' ? c.lusd : c.usd;
+    const cv = hm.val==='be' ? '--warn' : null;
     const vals = Object.values(cells).map(c=> hm.val==='wr' ? val(c)-50 : val(c));
     const max = Math.max(1, ...vals.map(Math.abs));
-    const fmt = c => hm.val==='wr' ? Math.round(val(c))+' %' : money(Math.round(val(c)));
+    const fmt = c => hm.val==='wr' ? Math.round(val(c))+' %' : hm.val==='be' ? c.be+' BE' : hm.val==='loss' ? (c.l ? money(Math.round(c.lusd)) : '–') : money(Math.round(val(c)));
     let h = '<div></div>' + slots.map(s=>'<div class="hd">'+hhmm(s)+'</div>').join('');
     rows.forEach(wd=>{ h += '<div class="rl">'+WD[wd]+'</div>';
       slots.forEach(s=>{ const c = cells[wd+'|'+s];
         if(!c){ h += '<button type="button" class="c e" tabindex="-1" aria-hidden="true"></button>'; return; }
         const v = hm.val==='wr' ? val(c)-50 : val(c);
-        h += '<button type="button" class="c" data-cat="slot:'+wd+'|'+s+'|'+st+'" style="'+hmColor(v,max)+'" title="'+WD[wd]+' '+hhmm(s)+'–'+hhmm(s+st)+': '+c.n+' Trades, '+money(c.usd)+', '+Math.round(c.w/c.n*100)+' % Treffer">'+fmt(c)+'<small>'+c.n+' Tr.</small></button>'; }); });
+        h += '<button type="button" class="c" data-cat="slot:'+wd+'|'+s+'|'+st+'" style="'+hmColor(v,max,cv)+'" title="'+WD[wd]+' '+hhmm(s)+'–'+hhmm(s+st)+': '+c.n+' Trades, '+money(c.usd)+', '+c.w+' Gewinner · '+c.be+' BE · '+c.l+' Verluste ('+money(Math.round(c.lusd))+')">'+fmt(c)+'<small>'+c.n+' Tr.</small></button>'; }); });
     box.style.gridTemplateColumns = 'auto repeat('+slots.length+', minmax(46px,1fr))';
     box.innerHTML = h;
     // beste / schlechteste Zeit
-    const bySlot = {}; ts.forEach(t=>{ const s = Math.floor(minOf(t.time)/st)*st; const c = bySlot[s] || (bySlot[s] = {n:0,usd:0}); c.n++; c.usd += netOf(t); });
+    const bySlot = {}; ts.forEach(t=>{ const s = Math.floor(minOf(t.time)/st)*st; const c = bySlot[s] || (bySlot[s] = {n:0,usd:0,be:0,lusd:0}); const n = netOf(t); c.n++; c.usd += n; if(isBE(t)) c.be++; else if(n<0) c.lusd += n; });
+    const beTop = Object.entries(bySlot).filter(e=>e[1].be).sort((a,b)=>b[1].be-a[1].be)[0];
+    const lossTop = Object.entries(bySlot).filter(e=>e[1].lusd<0).sort((a,b)=>a[1].lusd-b[1].lusd)[0];
     const ent = Object.entries(bySlot).sort((a,b)=>b[1].usd-a[1].usd);
     const byWd = {}; ts.forEach(t=>{ const d = wdOf(t.date); const c = byWd[d] || (byWd[d] = {n:0,usd:0}); c.n++; c.usd += netOf(t); });
     const wdE = Object.entries(byWd).sort((a,b)=>b[1].usd-a[1].usd);
@@ -1648,7 +1655,9 @@ table.tlist td{white-space:nowrap}
     $('#hm-sum').innerHTML = '<span>Beste Zeit: <b class="pos">'+lbl(ent[0][0])+' · '+money(ent[0][1].usd)+'</b></span>'+
       (ent.length>1 && ent[ent.length-1][1].usd<0 ? '<span>Schwächste Zeit: <b class="neg">'+lbl(ent[ent.length-1][0])+' · '+money(ent[ent.length-1][1].usd)+'</b></span>' : '')+
       '<span>Bester Tag: <b>'+WD[wdE[0][0]]+' · '+money(wdE[0][1].usd)+'</b></span>'+
-      (wdE.length>1 && wdE[wdE.length-1][1].usd<0 ? '<span>Schwächster Tag: <b>'+WD[wdE[wdE.length-1][0]]+' · '+money(wdE[wdE.length-1][1].usd)+'</b></span>' : '');
+      (wdE.length>1 && wdE[wdE.length-1][1].usd<0 ? '<span>Schwächster Tag: <b>'+WD[wdE[wdE.length-1][0]]+' · '+money(wdE[wdE.length-1][1].usd)+'</b></span>' : '')+
+      (beTop ? '<span>Meiste Break-Even: <b>'+lbl(beTop[0])+' · '+beTop[1].be+'×</b></span>' : '')+
+      (lossTop ? '<span>Meiste Verluste: <b class="neg">'+lbl(lossTop[0])+' · '+money(Math.round(lossTop[1].lusd))+'</b></span>' : '');
   }
   const segPick = (sel, key, cast) => document.querySelectorAll(sel+' button').forEach(b=>b.addEventListener('click', ()=>{ hm[key] = cast(b.dataset.v); try{ localStorage.setItem('nqj-hm', JSON.stringify(hm)); }catch(e){} drawHeat(anaList); }));
   segPick('#hm-val', 'val', String); segPick('#hm-step', 'step', Number);
@@ -1805,6 +1814,11 @@ table.tlist td{white-space:nowrap}
     const ctxRows = grp(t=>t.ctx, ['Allgemein','Range','Trend','Sammelzone','Volumenzone'], 'ctx');
     const open = list.filter(t=>!t.ctx).length;
     $('#ana-ctx').innerHTML = (ctxRows.length ? tbl(['Wo?','Trades','Treffer','Ergebnis'], ctxRows) : '<p class="sub">Noch keine Trades mit „Wo?“ erfasst.</p>') + (open ? '<p class="hint">'+open+' Trade'+(open>1?'s':'')+' ohne Angabe.</p>' : '');
+    { const g = {}; list.forEach(t=>{ const k = t.zone && t.zone.cls; if(!k) return; const x = g[k] || (g[k]={n:0,w:0,usd:0,tk:0}); x.n++; if(t.ticks>0) x.w++; x.usd += netOf(t); x.tk += Number(t.ticks)||0; });
+      const ord = ['Breakout','Ablehnung','In Zone','In Zone rein','Unklar','Keine Zone'].filter(k=>g[k]);
+      const lbl = {'In Zone':'Mitten in der Zone','In Zone rein':'Gegen die Zone (rein)','Keine Zone':'Keine Zone in der Nähe'};
+      const open = list.filter(t=>!t.zone).length;
+      $('#ana-zone').innerHTML = (ord.length ? tbl(['Lage','Trades','Treffer','Ø Ticks','Ergebnis'], ord.map(k=>{ const x = g[k], av = Math.round(x.tk/x.n*10)/10; return '<tr data-cat="zone:'+esc(k)+'"><td>'+esc(lbl[k]||k)+'</td><td class="num">'+x.n+'</td><td class="num">'+Math.round(x.w/x.n*100)+' %</td><td class="num '+(av<0?'neg':'pos')+'">'+(av>0?'+':'')+av+'</td><td class="num '+(x.usd<0?'neg':'pos')+'">'+money(x.usd)+'</td></tr>'; })) : '<p class="sub">Noch keine Trades mit Zonen-Auswertung.</p>') + (open ? '<p class="hint">'+open+' Trade'+(open>1?'s':'')+' ohne Chart-Export.</p>' : ''); }
     const suRows = grp(t=> t.setup ? t.setup+' · '+(t.mode==='Runner'?'Runner':'Scalp') : null, null, 'setup');
     $('#ana-setup').innerHTML = suRows.length ? tbl(['Setup','Trades','Treffer','Ergebnis'], suRows) : '<p class="sub">Noch keine Trades mit Setup erfasst.</p>';
     { const g = {}; list.forEach(t=>(t.props||[]).forEach(k=>{ const x = g[k] || (g[k]={n:0,w:0,usd:0}); x.n++; if(t.ticks>0) x.w++; x.usd += netOf(t); }));
