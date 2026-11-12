@@ -508,7 +508,9 @@ table.tlist td{white-space:nowrap}
         <h3 class="h3 review-h"><span class="step">3</span>Nach der Session</h3>
         <div class="field"><span class="label">Hat die Einschätzung gestimmt?</span>
           <div class="seg pseg" data-p="hit"><button type="button" data-v="ja">Ja</button><button type="button" data-v="teilweise">Teilweise</button><button type="button" data-v="nein">Nein</button></div></div>
-        <label class="field" style="flex:1;min-width:220px"><span class="label">Was war anders?</span><input type="text" id="p-review" placeholder="z. B. Range statt Trend, Dominanz kam erst ab 16:30"></label>
+        <div class="field"><span class="label">Note für den Handelstag (Regeltreue &amp; Ruhe, nicht Geld)</span>
+          <div class="seg pseg" data-p="grade"><button type="button" data-v="A" title="Sauber nach Plan">A · nach Plan</button><button type="button" data-v="B" title="Kleiner Ausrutscher">B · kleiner Ausrutscher</button><button type="button" data-v="C" title="Klarer Regelbruch">C · Regelbruch</button><button type="button" data-v="D" title="Tag verloren, emotional">D · emotional</button></div></div>
+        <label class="field" style="flex:1;min-width:220px"><span class="label">Tagesrückblick &amp; Gedanken</span><textarea id="p-review" rows="4" placeholder="Was war anders? Wie hast du dich gefühlt? Was nimmst du mit?"></textarea></label>
       </div>
       <div class="actions"><button type="submit" class="btn primary" id="p-save">Vorbereitung speichern</button><span class="msg" id="p-msg" role="status"></span></div>
     </form>
@@ -1373,7 +1375,7 @@ table.tlist td{white-space:nowrap}
     const date = $('#p-date').value || todayStr();
     if(!force && pDirty && pLoadedFor===date) return;
     const p = (days[date] && days[date].prep) || {};
-    setP('mood', p.mood||null); setP('moodGoal', p.moodGoal||null); setP('open', p.open||null); setP('delta', p.delta||null); setP('profile', p.profile||null); setP('bias', p.bias||null); setP('hit', p.hit||null);
+    setP('mood', p.mood||null); setP('moodGoal', p.moodGoal||null); setP('open', p.open||null); setP('delta', p.delta||null); setP('profile', p.profile||null); setP('bias', p.bias||null); setP('hit', p.hit||null); setP('grade', p.grade||null);
     setChecked('#chk-d', (p.chkD||[]).map(String)); setChecked('#chk-r', (p.chkR||[]).map(String)); renderDres();
     $('#p-levels').value = p.levels||''; $('#p-scen-a').value = p.scenA||''; $('#p-scen-b').value = p.scenB||'';
     $('#p-notes').value = p.notes||''; $('#p-mood-why').value = p.moodWhy||''; $('#p-review').value = p.review||'';
@@ -1386,7 +1388,7 @@ table.tlist td{white-space:nowrap}
     e.preventDefault();
     if(!db){ $('#p-msg').textContent='Keine Verbindung zum Speicher.'; return; }
     const date = $('#p-date').value || todayStr();
-    const prep = {mood:P.mood, moodGoal:P.moodGoal, open:P.open, delta:P.delta, profile:P.profile, bias:P.bias, hit:P.hit, chkD:getChecked('#chk-d').map(Number), chkR:getChecked('#chk-r').map(Number), cls:dClass(),
+    const prep = {mood:P.mood, moodGoal:P.moodGoal, open:P.open, delta:P.delta, profile:P.profile, bias:P.bias, hit:P.hit, grade:P.grade, chkD:getChecked('#chk-d').map(Number), chkR:getChecked('#chk-r').map(Number), cls:dClass(),
       moodWhy:$('#p-mood-why').value.trim(), levels:$('#p-levels').value.trim(), scenA:$('#p-scen-a').value.trim(), scenB:$('#p-scen-b').value.trim(),
       notes:$('#p-notes').value.trim(), review:$('#p-review').value.trim(), shots:pShots.slice(), updatedAt:Date.now()};
     $('#p-save').disabled = true;
