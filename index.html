@@ -643,6 +643,7 @@ table.tlist td{white-space:nowrap}
     <div class="stat"><span class="label">Trefferquote</span><span class="v" id="s-wr">–</span><span class="h" id="s-wr-h">TP / Gewinner</span></div>
     <div class="stat"><span class="label">Ticks netto</span><span class="v" id="s-ticks">–</span><span class="h" id="s-ticks-h">Ø pro Trade</span></div>
     <div class="stat"><span class="label">Regeltreue</span><span class="v" id="s-rule">–</span><span class="h" id="s-rule-h">nach Plan gehandelt</span></div>
+    <div class="stat"><span class="label">Ø Haltedauer</span><span class="v" id="s-hold">–</span><span class="h" id="s-hold-h">Einstieg bis Ausstieg</span></div>
   </section>
     <section class="card perf">
       <div class="sec-title"><div><h2 id="perf-title">Kontoverlauf</h2><p class="sub" id="perf-sub">Kontostand nach jedem Trade, mit Auszahlungsziel und Liquidationsgrenze.</p></div>
@@ -674,6 +675,7 @@ table.tlist td{white-space:nowrap}
       <div class="card"><h2>Nach Situation („Wo?“)</h2><p class="sub">Wo funktionieren deine Setups, wo nicht?</p><div id="ana-ctx"></div></div>
       <div class="card"><h2>Setup und Modus</h2><div id="ana-setup"></div></div>
       <div class="card"><h2>Nach Lage zur Zone</h2><p class="sub">Automatisch aus deinen eingezeichneten Zonen im ATAS-Export. Breakout = an der äußeren Kante aus der Zone raus, Ablehnung = an der Kante abgeprallt. Ø Ticks ist unabhängig von der Kontraktzahl.</p><div id="ana-zone"></div></div>
+      <div class="card"><h2>Nach Haltedauer</h2><p class="sub">Wie lange du im Trade warst – und was dabei rauskommt.</p><div id="ana-hold"></div></div>
       <div class="card"><h2>Nach Eigenschaft</h2><p class="sub">BIAS, Trend, Vola, News und deine Tags.</p><div id="ana-props"></div></div>
       <div class="card"><h2>Beste Trades</h2><div id="ana-best"></div></div>
       <div class="card"><h2>Schlechteste Trades</h2><div id="ana-worst"></div></div>
@@ -1123,7 +1125,7 @@ table.tlist td{white-space:nowrap}
     const atas = t && (t.source==='ATAS' || t.source==='merged');
     document.querySelectorAll('#form .raw').forEach(el=>el.hidden = !!atas);
     const sum = $('#raw-sum'); sum.hidden = !atas;
-    if(atas) sum.textContent = (t.acct||'').replace('APEX-','Apex ')+' · '+mktOf(t)+' · '+(t.qty||1)+' Kontr. · '+t.dir+' · Einstieg '+(t.time||'').slice(0,5)+' @ '+t.entry+' → Ausstieg '+(t.exitTime||'').slice(0,5)+' @ '+t.exitPrice+' · '+signed(t.ticks)+' Ticks ('+money(t.pnl)+'). Aus ATAS übernommen, nur noch Setup, Delta, Gefühl und Notiz ergänzen.';
+    if(atas) sum.textContent = (t.acct||'').replace('APEX-','Apex ')+' · '+mktOf(t)+' · '+(t.qty||1)+' Kontr. · '+t.dir+' · Einstieg '+(t.time||'').slice(0,5)+' @ '+t.entry+' → Ausstieg '+(t.exitTime||'').slice(0,5)+' @ '+t.exitPrice+' · Dauer '+fmtDur(holdOf(t))+' · '+signed(t.ticks)+' Ticks ('+money(t.pnl)+'). Aus ATAS übernommen, nur noch Setup, Delta, Gefühl und Notiz ergänzen.';
   }
   function loadTrade(t){
     editing = t.id; ticksTouched = true;
@@ -1599,13 +1601,14 @@ table.tlist td{white-space:nowrap}
   // ---- Auswertung
   function tbl(head, rows){ return '<div class="scroll"><table><thead><tr>'+head.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'+rows.join('')+'</tbody></table></div>'; }
   let anaList = [], anaCat = null;
-  const CAT_TITLE = c => { const [k,v] = c.split(':'); return k==='err' ? 'Fehler: '+(ERR[v]?ERR[v].label:v) : k==='ctx' ? 'Wo: '+v : k==='setup' ? 'Setup: '+v : k==='prop' ? 'Eigenschaft: '+v : k==='zone' ? 'Lage: '+v : k==='slot' ? (()=>{ const [wd,m0,st] = c.slice(5).split('|').map(Number); return WD[wd]+' '+hhmm(m0)+'–'+hhmm(m0+st); })() : k==='day' ? fmtDate(v) : k==='wk' ? 'Woche ab '+fmtDate(v) : v; };
+  const CAT_TITLE = c => { const [k,v] = c.split(':'); return k==='err' ? 'Fehler: '+(ERR[v]?ERR[v].label:v) : k==='ctx' ? 'Wo: '+v : k==='setup' ? 'Setup: '+v : k==='prop' ? 'Eigenschaft: '+v : k==='zone' ? 'Lage: '+v : k==='hold' ? 'Haltedauer '+(()=>{ const [a,b] = v.split('|').map(Number); return b>=1e9 ? 'über '+fmtDur(a) : fmtDur(a)+' – '+fmtDur(b); })() : k==='slot' ? (()=>{ const [wd,m0,st] = c.slice(5).split('|').map(Number); return WD[wd]+' '+hhmm(m0)+'–'+hhmm(m0+st); })() : k==='day' ? fmtDate(v) : k==='wk' ? 'Woche ab '+fmtDate(v) : v; };
   const CAT_FN = c => { const i = c.indexOf(':'), k = c.slice(0,i), v = c.slice(i+1);
     if(k==='err') return t=>(t.errs||[]).includes(v);
     if(k==='ctx') return t=>t.ctx===v;
     if(k==='setup') return t=>t.setup && (t.setup+' · '+(t.mode==='Runner'?'Runner':'Scalp'))===v;
     if(k==='prop') return t=>(t.props||[]).includes(v);
     if(k==='zone') return t=>t.zone && t.zone.cls===v;
+    if(k==='hold'){ const [a,b] = v.split('|').map(Number); return t=>{ const h = holdOf(t); return h!=null && h>=a && h<b; }; }
     if(k==='slot'){ const [wd,m0,st] = v.split('|').map(Number); return t=>wdOf(t.date)===wd && (()=>{ const m = minOf(t.time); return m!=null && m>=m0 && m<m0+st; })(); }
     if(k==='day') return t=>t.date===v && t.acct!=='Demo';
     if(k==='wk') return t=>t.acct!=='Demo' && mondayOf(t.date)===v;
@@ -1691,10 +1694,15 @@ table.tlist td{white-space:nowrap}
   }
   $('#cal-prev').addEventListener('click', ()=>{ cal.m--; if(cal.m<0){ cal.m=11; cal.y--; } drawCal(); });
   $('#cal-next').addEventListener('click', ()=>{ cal.m++; if(cal.m>11){ cal.m=0; cal.y++; } drawCal(); });
+  // ---- Haltedauer (Sekunden von Einstieg bis Ausstieg)
+  const holdOf = t => { if(!t.time || !t.exitTime) return null; const f = x => { const [h,m,sec] = String(x).split(':').map(Number); return h*3600 + (m||0)*60 + (sec||0); };
+    let d = f(t.exitTime) - f(t.time); if(d < 0) d += 86400; return isFinite(d) ? d : null; };
+  const fmtDur = s => { if(s==null || !isFinite(s)) return '–'; s = Math.round(s); if(s < 60) return s+' s'; if(s < 3600) return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')+' min'; return Math.floor(s/3600)+' h '+Math.round((s%3600)/60)+' min'; };
+  const avgHold = ts => { const v = ts.map(holdOf).filter(x=>x!=null); return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null; };
   function tradeRows(ts){
     const sd = d => { const [y,m,dd]=d.split('-'); return new Date(+y,+m-1,+dd).toLocaleDateString('de-CH',{weekday:'short',day:'2-digit',month:'2-digit'}); };
     const hasSu = ts.some(t=>t.setup);
-    return (tbl(['Tag','Zeit','Richtung'].concat(hasSu?['Setup']:[],['Ticks','Ergebnis']), ts.map(t=>'<tr data-tid="'+esc(t.id)+'"><td>'+esc(sd(t.date))+'</td><td class="num">'+esc((t.time||'').slice(0,5))+'</td><td>'+esc(t.dir)+'</td>'+(hasSu?'<td class="su">'+esc(t.setup? t.setup+' · '+(t.mode==='Runner'?'Runner':'Scalp') : '–')+'</td>':'')+'<td class="num '+(t.ticks<0?'neg':'pos')+'">'+signed(t.ticks)+'</td><td class="num '+(netOf(t)<0?'neg':'pos')+'">'+money(netOf(t))+'</td></tr>'))).replace('<table>','<table class="tlist">');
+    return (tbl(['Tag','Zeit','Richtung'].concat(hasSu?['Setup']:[],['Dauer','Ticks','Ergebnis']), ts.map(t=>'<tr data-tid="'+esc(t.id)+'"><td>'+esc(sd(t.date))+'</td><td class="num">'+esc((t.time||'').slice(0,5))+'</td><td>'+esc(t.dir)+'</td>'+(hasSu?'<td class="su">'+esc(t.setup? t.setup+' · '+(t.mode==='Runner'?'Runner':'Scalp') : '–')+'</td>':'')+'<td class="num">'+fmtDur(holdOf(t))+'</td><td class="num '+(t.ticks<0?'neg':'pos')+'">'+signed(t.ticks)+'</td><td class="num '+(netOf(t)<0?'neg':'pos')+'">'+money(netOf(t))+'</td></tr>'))).replace('<table>','<table class="tlist">');
   }
   function showCat(cat){
     anaCat = cat; const ts = (/^(day|wk):/.test(cat) ? trades : anaList).filter(CAT_FN(cat)).sort((a,b)=>(b.sort||'').localeCompare(a.sort||''));
@@ -1821,6 +1829,12 @@ table.tlist td{white-space:nowrap}
       const lbl = {'In Zone':'Mitten in der Zone','In Zone rein':'Gegen die Zone (rein)','Keine Zone':'Keine Zone in der Nähe'};
       const open = list.filter(t=>!t.zone).length;
       $('#ana-zone').innerHTML = (ord.length ? tbl(['Lage','Trades','Treffer','Ø Ticks','Ergebnis'], ord.map(k=>{ const x = g[k], av = Math.round(x.tk/x.n*10)/10; return '<tr data-cat="zone:'+esc(k)+'"><td>'+esc(lbl[k]||k)+'</td><td class="num">'+x.n+'</td><td class="num">'+Math.round(x.w/x.n*100)+' %</td><td class="num '+(av<0?'neg':'pos')+'">'+(av>0?'+':'')+av+'</td><td class="num '+(x.usd<0?'neg':'pos')+'">'+money(x.usd)+'</td></tr>'; })) : '<p class="sub">Noch keine Trades mit Zonen-Auswertung.</p>') + (open ? '<p class="hint">'+open+' Trade'+(open>1?'s':'')+' ohne Chart-Export.</p>' : ''); }
+    { const B = [[0,15,'unter 15 s'],[15,60,'15–60 s'],[60,180,'1–3 min'],[180,600,'3–10 min'],[600,1e9,'über 10 min']];
+      const g = B.map(b=>({b, n:0, w:0, usd:0, tk:0}));
+      list.forEach(t=>{ const h = holdOf(t); if(h==null) return; const x = g.find(x=>h>=x.b[0] && h<x.b[1]); x.n++; if(t.ticks>0) x.w++; x.usd += netOf(t); x.tk += Number(t.ticks)||0; });
+      const rows = g.filter(x=>x.n).map(x=>{ const av = Math.round(x.tk/x.n*10)/10; return '<tr data-cat="hold:'+x.b[0]+'|'+x.b[1]+'"><td>'+x.b[2]+'</td><td class="num">'+x.n+'</td><td class="num">'+Math.round(x.w/x.n*100)+' %</td><td class="num '+(av<0?'neg':'pos')+'">'+(av>0?'+':'')+av+'</td><td class="num '+(x.usd<0?'neg':'pos')+'">'+money(x.usd)+'</td></tr>'; });
+      const by = (lbl, f) => { const ts = list.filter(f); return ts.length ? '<span>'+lbl+': <b>'+fmtDur(avgHold(ts))+'</b></span>' : ''; };
+      $('#ana-hold').innerHTML = rows.length ? '<div class="hm-sum">'+by('Ø TP', t=>t.exit==='TP')+by('Ø SL', t=>t.exit==='SL')+by('Ø Gewinner', t=>netOf(t)>0)+by('Ø Verlierer', t=>netOf(t)<0)+'</div>'+tbl(['Haltedauer','Trades','Treffer','Ø Ticks','Ergebnis'], rows) : '<p class="sub">Noch keine Trades mit Ein- und Ausstiegszeit.</p>'; }
     const suRows = grp(t=> t.setup ? t.setup+' · '+(t.mode==='Runner'?'Runner':'Scalp') : null, null, 'setup');
     $('#ana-setup').innerHTML = suRows.length ? tbl(['Setup','Trades','Treffer','Ergebnis'], suRows) : '<p class="sub">Noch keine Trades mit Setup erfasst.</p>';
     { const g = {}; list.forEach(t=>(t.props||[]).forEach(k=>{ const x = g[k] || (g[k]={n:0,w:0,usd:0}); x.n++; if(t.ticks>0) x.w++; x.usd += netOf(t); }));
@@ -1894,6 +1908,9 @@ table.tlist td{white-space:nowrap}
     const jn = judged.length, open = n-jn;
     const rr = $('#s-rule'); rr.textContent = jn ? Math.round(rules/jn*100)+' %' : '–';
     rr.className = 'v '+(!jn?'':rules/jn>=0.9?'pos':rules/jn<0.7?'neg':'');
+    { const ah = avgHold(list), w = avgHold(list.filter(t=>netOf(t)>0)), l = avgHold(list.filter(t=>netOf(t)<0));
+      $('#s-hold').textContent = fmtDur(ah);
+      $('#s-hold-h').textContent = ah==null ? 'Einstieg bis Ausstieg' : 'Gewinner '+fmtDur(w)+' · Verlierer '+fmtDur(l); }
     $('#s-rule-h').textContent = n ? (jn-rules)+' Regelbruch'+((jn-rules)===1?'':'e')+(open?' · '+open+' offen':'') : 'nach Plan gehandelt';
 
     renderAccts();
@@ -1926,7 +1943,7 @@ table.tlist td{white-space:nowrap}
         '<td><span class="dir">'+esc(t.dir)+'</span> <b class="num">'+(t.qty||1)+'×</b> <span class="mkt">'+esc(mktOf(t))+'</span>'+(t.legs&&t.legs.length?'<br><span class="hint">aus '+t.legs.length+' Trades</span>':'')+'</td>'+
         '<td>'+(t.setup||t.mode ? esc(t.setup||'–')+' · '+(t.mode?esc(modeLbl(t.mode)):'–') : '<span class="flag" style="background:var(--warn-bg);color:var(--warn)">ergänzen</span>')+'</td>'+
         '<td class="num" title="'+esc(chk?chk[1]:'')+'">'+(t.delta==null?'–':esc(t.delta)+' %')+(chk&&chk[0]!=='ok'?' <span class="flag no">'+(chk[0]==='bad'?'außerhalb':'grau')+'</span>':'')+'</td>'+
-        '<td>'+esc(t.exit)+'</td>'+
+        '<td>'+esc(t.exit)+(holdOf(t)!=null?'<br><span class="note">'+fmtDur(holdOf(t))+'</span>':'')+'</td>'+
         '<td class="num res '+resCls+'">'+signed(t.ticks)+(t.pnl!=null?'<br><span class="note">'+money(t.pnl)+'</span>':'')+'</td>'+
         '<td>'+(errPts(t)?'<span class="flag no" title="'+esc((t.errs||[]).map(k=>ERR[k]?ERR[k].label:k).join(' · '))+'">'+errPts(t)+' P</span> ':'')+(t.rule==='offen'?'<span class="flag" style="background:var(--sunk);color:var(--muted)">offen</span>':'<span class="flag '+(t.rule==='ja'?'ok':'no')+'">'+(t.rule==='ja'?'nach Plan':'Regelbruch')+'</span>')+'</td>'+
         '<td class="note">'+((t.props&&t.props.length)?'<span class="hint">'+esc(t.props.join(' · '))+'</span><br>':'')+(t.emo?'<b>'+esc(t.emo)+'</b>':'')+(t.note?(t.emo?' · ':'')+esc(t.note):'')+sh+'</td>'+
