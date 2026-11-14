@@ -467,6 +467,9 @@ table.tlist td{white-space:nowrap}
             </div></div></div>
       <div class="prep-grid">
         <div class="prep-col">
+          <div class="field"><span class="label">Tages-Check: Wie war dein Tag bis jetzt?</span>
+            <div class="seg pseg" data-p="active"><button type="button" data-v="aktiv">Aktiv – ich hab heute was für mich getan</button><button type="button" data-v="gammel">Gammeltag – nichts gemacht, keine Lust</button></div>
+            <span class="hint" id="p-active-hint">Zählt nur, was dich mental voranbringt: an der App gearbeitet, Sprache gelernt, etwas erledigt, Lust auf Wachstum. Training und Bibellesen machst du sowieso – die zählen hier nicht.</span></div>
           <div class="field"><span class="label">Grundstimmung</span>
             <div class="seg pseg" data-p="mood"><button type="button" data-v="schlecht">Nicht gut</button><button type="button" data-v="neutral">Neutral</button><button type="button" data-v="spitze">Spitze</button></div>
             <span class="hint" id="p-mood-hint">Wie fühlst du dich heute zum Handeln?</span></div>
@@ -1216,7 +1219,7 @@ table.tlist td{white-space:nowrap}
   const prepOf = d => (pLoadedFor===d ? P : (days[d] && days[d].prep) || {});
   const goalLbl = g => g==='0' ? 'kein Handel' : g ? g.split('-')[0]+' TP oder '+g.split('-')[1]+' SL, dann Schluss' : null;
   // Prüft das Stimmungs-Tagesziel gegen die Trades des Tages → Text, wenn Schluss ist
-  function moodStop(list, pr){ if(!moodLimited(pr.mood) || !pr.moodGoal) return null;
+  function moodStop(list, pr){ if(pr.active==='gammel') return 'Gammeltag – heute kein Handel'; if(!moodLimited(pr.mood) || !pr.moodGoal) return null;
     if(pr.moodGoal==='0') return list.length ? 'Heute war „kein Handel“ geplant' : 'Heute kein Handel geplant';
     const [tp, sl] = pr.moodGoal.split('-').map(Number), w = list.filter(t=>netOf(t)>0).length, l = list.filter(t=>netOf(t)<0).length;
     if(w>=tp) return tp+' TP erreicht'; if(l>=sl) return sl+' SL erreicht'; return null; } let pShots = [], pDirty = false, pLoadedFor = null;
@@ -1348,7 +1351,8 @@ table.tlist td{white-space:nowrap}
     const name = el.dataset.p; setP(name, P[name]===b.dataset.v ? null : b.dataset.v); pDirty = true; pHints(); renderFocus(); renderAccts(); moodHint();
   }));
   $('#prep').addEventListener('input', ()=>{ pDirty = true; });
-  function moodHint(){ const el = $('#p-mood-hint'); if(!el) return; const bad = moodLimited(P.mood);
+  function moodHint(){ { const ah = $('#p-active-hint'); if(ah){ const g = P.active==='gammel'; ah.textContent = g ? 'Heute kein Handel. Gammeln ist okay – aber an solchen Tagen machst du Fehler, weil du schnell fertig sein willst. Morgen wieder.' : P.active==='aktiv' ? 'Gut. Du warst heute im Modus – dann darfst du handeln.' : 'Zählt nur, was dich mental voranbringt: an der App gearbeitet, Sprache gelernt, etwas erledigt, Lust auf Wachstum. Training und Bibellesen machst du sowieso – die zählen hier nicht.'; ah.style.color = g ? 'var(--loss)' : ''; ah.style.fontWeight = g ? '600' : ''; } }
+    const el = $('#p-mood-hint'); if(!el) return; const bad = moodLimited(P.mood);
     $('#p-goal-row').hidden = !bad;
     el.textContent = bad ? 'Nicht gut: anderes Ziel als sonst. Leg unten fest, was heute reicht.' : P.mood==='spitze' ? 'Spitze: normaler Plan, trotzdem Regeln einhalten.' : 'Wie fühlst du dich heute zum Handeln?';
     el.style.color = bad ? 'var(--warn)' : ''; }
@@ -1377,7 +1381,7 @@ table.tlist td{white-space:nowrap}
     const date = $('#p-date').value || todayStr();
     if(!force && pDirty && pLoadedFor===date) return;
     const p = (days[date] && days[date].prep) || {};
-    setP('mood', p.mood||null); setP('moodGoal', p.moodGoal||null); setP('open', p.open||null); setP('delta', p.delta||null); setP('profile', p.profile||null); setP('bias', p.bias||null); setP('hit', p.hit||null); setP('grade', p.grade||null);
+    setP('mood', p.mood||null); setP('moodGoal', p.moodGoal||null); setP('open', p.open||null); setP('delta', p.delta||null); setP('profile', p.profile||null); setP('bias', p.bias||null); setP('hit', p.hit||null); setP('active', p.active||null); setP('grade', p.grade||null);
     setChecked('#chk-d', (p.chkD||[]).map(String)); setChecked('#chk-r', (p.chkR||[]).map(String)); renderDres();
     $('#p-levels').value = p.levels||''; $('#p-scen-a').value = p.scenA||''; $('#p-scen-b').value = p.scenB||'';
     $('#p-notes').value = p.notes||''; $('#p-mood-why').value = p.moodWhy||''; $('#p-review').value = p.review||'';
@@ -1390,7 +1394,7 @@ table.tlist td{white-space:nowrap}
     e.preventDefault();
     if(!db){ $('#p-msg').textContent='Keine Verbindung zum Speicher.'; return; }
     const date = $('#p-date').value || todayStr();
-    const prep = {mood:P.mood, moodGoal:P.moodGoal, open:P.open, delta:P.delta, profile:P.profile, bias:P.bias, hit:P.hit, grade:P.grade, chkD:getChecked('#chk-d').map(Number), chkR:getChecked('#chk-r').map(Number), cls:dClass(),
+    const prep = {mood:P.mood, moodGoal:P.moodGoal, open:P.open, delta:P.delta, profile:P.profile, bias:P.bias, hit:P.hit, active:P.active, grade:P.grade, chkD:getChecked('#chk-d').map(Number), chkR:getChecked('#chk-r').map(Number), cls:dClass(),
       moodWhy:$('#p-mood-why').value.trim(), levels:$('#p-levels').value.trim(), scenA:$('#p-scen-a').value.trim(), scenB:$('#p-scen-b').value.trim(),
       notes:$('#p-notes').value.trim(), review:$('#p-review').value.trim(), shots:pShots.slice(), updatedAt:Date.now()};
     $('#p-save').disabled = true;
