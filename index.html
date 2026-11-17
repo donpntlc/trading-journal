@@ -112,7 +112,13 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 .filters{display:flex;gap:6px;flex-wrap:wrap}
 .chip{font:inherit;font-size:.8rem;font-weight:500;padding:5px 11px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer}
 .chip[aria-pressed="true"]{background:var(--accent-bg);color:var(--accent);border-color:var(--accent)}
-.scroll{overflow-x:auto}
+.scroll{overflow-x:auto;max-width:100%}
+.card > *{min-width:0}
+.ana table{width:100%}
+.ana th{white-space:normal;letter-spacing:.04em}
+@media (max-width:600px){.ana td,.ana th{padding:6px 5px;font-size:.82rem}.ana th{font-size:.62rem}}
+html.mobile .ana td,html.mobile .ana th{padding:6px 5px;font-size:.82rem}
+html.mobile .ana th{font-size:.62rem}
 table{width:100%;border-collapse:collapse;font-size:.88rem;min-width:720px}
 th{text-align:left;font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600;padding:9px 12px;background:var(--sunk);white-space:nowrap}
 td{padding:10px 12px;border-top:1px solid var(--line);vertical-align:top}
