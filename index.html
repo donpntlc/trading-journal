@@ -232,7 +232,8 @@ html.mobile .dcols{grid-template-columns:1fr}
 .chart-head .sub{font-size:.84rem}
 #chart-tf{width:100%;justify-content:flex-end}
 #chart-tf::before{content:'Kerzen';font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;align-self:center;margin-right:4px}
-.cv-wrap{position:relative;height:420px;background:#1b1b1e}
+.cv-wrap{position:relative;height:420px;background:#1b1b1e;touch-action:none;-webkit-user-select:none;user-select:none}
+#cv{touch-action:none}
 .cv-wrap canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .legend{display:flex;flex-wrap:wrap;gap:6px 16px;padding:10px 16px;border-top:1px solid var(--line);font-size:.8rem;color:var(--muted)}
 .legend i{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:-2px;margin-right:5px}
@@ -1990,6 +1991,8 @@ table.tlist td{white-space:nowrap}
     }, {passive:false});
     // Maus + Touch: 1 Finger = verschieben, 2 Finger = Zeit zoomen (Pinch), Doppeltipp = zurücksetzen
     const pts = new Map(); let pinch = null, lastTap = 0;
+    // iOS/Safari: Scrollen der Seite über dem Chart unterbinden, sonst bricht das Ziehen ab (pointercancel)
+    ['touchstart','touchmove'].forEach(ev=>cv.addEventListener(ev, e=>{ e.preventDefault(); }, {passive:false}));
     const startDrag = (e)=>{ const r = cv.getBoundingClientRect();
       drag = {x:e.clientX, y:e.clientY, t0:view.cur0, t1:view.cur1, axis: e.clientX - r.left > r.width - 64, ps:view.pScale, sh:view.pShift, w:r.width, h:r.height}; };
     const startPinch = ()=>{ const r = cv.getBoundingClientRect(); const [a,b] = [...pts.values()];
