@@ -663,7 +663,7 @@ table.tlist td{white-space:nowrap}
     <section class="card">
       <div class="sec-title"><div><h2>Wann bist du stark?</h2><p class="sub" id="hm-sub">Tageszeit × Wochentag – Ergebnis netto. Antippen zeigt die Trades.</p></div>
         <div class="hm-ctl"><div class="seg" id="hm-val" aria-label="Wert"><button type="button" data-v="sum" aria-pressed="true">Summe</button><button type="button" data-v="avg">Ø Trade</button><button type="button" data-v="wr">Treffer</button><button type="button" data-v="be">Break-Even</button><button type="button" data-v="loss">Verluste</button></div>
-          <div class="seg" id="hm-step" aria-label="Raster"><button type="button" data-v="60" aria-pressed="true">1 h</button><button type="button" data-v="30">30 min</button><button type="button" data-v="15">15 min</button></div></div></div>
+          <div class="seg" id="hm-step" aria-label="Raster"><button type="button" data-v="60" aria-pressed="true">1 h</button><button type="button" data-v="30">30 min</button><button type="button" data-v="15">15 min</button></div><div class="seg" id="hm-unit" aria-label="Einheit"><button type="button" data-v="usd" aria-pressed="true">$</button><button type="button" data-v="tk">Ticks</button></div></div></div>
       <div class="hm-wrap"><div class="hm" id="hm"></div></div>
       <div class="hm-sum" id="hm-sum"></div>
     </section>
@@ -1624,52 +1624,54 @@ table.tlist td{white-space:nowrap}
   const mondayOf = d => { const [y,m,dd] = d.split('-'); const x = new Date(+y,+m-1,+dd); x.setDate(x.getDate()-((x.getDay()+6)%7)); return isoDay(x); };
   const isBE = t => t.exit==='BE' || (t.exit!=='TP' && t.exit!=='SL' && Math.abs(Number(t.ticks)||0) <= 8);
   const hmColor = (v, max, cv) => { if(!v || !max) return ''; if(cv){ const p = Math.round(12 + Math.min(1, Math.abs(v)/max)*58); return 'background:color-mix(in srgb, var('+cv+') '+p+'%, var(--surface))'; } const p = Math.round(12 + Math.min(1, Math.abs(v)/max)*58); return 'background:color-mix(in srgb, var('+(v>0?'--win':'--loss')+') '+p+'%, var(--surface))'; };
-  const hm = {val:'sum', step:60};
-  try{ const s = JSON.parse(localStorage.getItem('nqj-hm')||'{}'); if(s.val) hm.val = s.val; if(s.step) hm.step = +s.step; }catch(e){}
+  const hm = {val:'sum', step:60, unit:'usd'};
+  try{ const s = JSON.parse(localStorage.getItem('nqj-hm')||'{}'); if(s.val) hm.val = s.val; if(s.step) hm.step = +s.step; if(s.unit) hm.unit = s.unit; }catch(e){}
   function drawHeat(list){
     const box = $('#hm'); if(!box) return;
     const ts = list.filter(t=>t.acct!=='Demo' && minOf(t.time)!=null);
     document.querySelectorAll('#hm-val button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.v===hm.val)));
     document.querySelectorAll('#hm-step button').forEach(b=>b.setAttribute('aria-pressed', String(+b.dataset.v===hm.step)));
     if(!ts.length){ box.style.gridTemplateColumns = ''; box.innerHTML = '<p class="sub">Noch keine Trades in diesem Zeitraum.</p>'; $('#hm-sum').innerHTML = ''; return; }
+    document.querySelectorAll('#hm-unit button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.v===hm.unit)));
+    const TK = hm.unit==='tk', amt = t => TK ? (Number(t.ticks)||0) : netOf(t), fm = v => TK ? (v>0?'+':v<0?'−':'')+Math.abs(Math.round(v*10)/10)+' T' : money(Math.round(v));
     const st = hm.step, cells = {};
     let lo = 24*60, hi = 0;
     ts.forEach(t=>{ const m = minOf(t.time), s = Math.floor(m/st)*st, wd = wdOf(t.date), k = wd+'|'+s;
       lo = Math.min(lo, s); hi = Math.max(hi, s);
-      const c = cells[k] || (cells[k] = {n:0, w:0, usd:0, be:0, l:0, lusd:0}); const n = netOf(t); c.n++; c.usd += n;
-      if(n>0) c.w++; if(isBE(t)) c.be++; else if(n<0){ c.l++; c.lusd += n; } });
+      const c = cells[k] || (cells[k] = {n:0, w:0, usd:0, be:0, l:0, lusd:0}); const n = netOf(t), a = amt(t); c.n++; c.usd += a;
+      if(n>0) c.w++; if(isBE(t)) c.be++; else if(n<0){ c.l++; c.lusd += a; } });
     const rows = [1,2,3,4,5].concat([0,6].filter(d=>ts.some(t=>wdOf(t.date)===d)));
     const slots = []; for(let s=lo; s<=hi; s+=st) slots.push(s);
     const val = c => hm.val==='avg' ? c.usd/c.n : hm.val==='wr' ? c.w/c.n*100 : hm.val==='be' ? c.be : hm.val==='loss' ? c.lusd : c.usd;
     const cv = hm.val==='be' ? '--warn' : null;
     const vals = Object.values(cells).map(c=> hm.val==='wr' ? val(c)-50 : val(c));
     const max = Math.max(1, ...vals.map(Math.abs));
-    const fmt = c => hm.val==='wr' ? Math.round(val(c))+' %' : hm.val==='be' ? c.be+' BE' : hm.val==='loss' ? (c.l ? money(Math.round(c.lusd)) : '–') : money(Math.round(val(c)));
+    const fmt = c => hm.val==='wr' ? Math.round(val(c))+' %' : hm.val==='be' ? c.be+' BE' : hm.val==='loss' ? (c.l ? fm(c.lusd) : '–') : fm(val(c));
     let h = '<div></div>' + slots.map(s=>'<div class="hd">'+hhmm(s)+'</div>').join('');
     rows.forEach(wd=>{ h += '<div class="rl">'+WD[wd]+'</div>';
       slots.forEach(s=>{ const c = cells[wd+'|'+s];
         if(!c){ h += '<button type="button" class="c e" tabindex="-1" aria-hidden="true"></button>'; return; }
         const v = hm.val==='wr' ? val(c)-50 : val(c);
-        h += '<button type="button" class="c" data-cat="slot:'+wd+'|'+s+'|'+st+'" style="'+hmColor(v,max,cv)+'" title="'+WD[wd]+' '+hhmm(s)+'–'+hhmm(s+st)+': '+c.n+' Trades, '+money(c.usd)+', '+c.w+' Gewinner · '+c.be+' BE · '+c.l+' Verluste ('+money(Math.round(c.lusd))+')">'+fmt(c)+'<small>'+c.n+' Tr.</small></button>'; }); });
+        h += '<button type="button" class="c" data-cat="slot:'+wd+'|'+s+'|'+st+'" style="'+hmColor(v,max,cv)+'" title="'+WD[wd]+' '+hhmm(s)+'–'+hhmm(s+st)+': '+c.n+' Trades, '+fm(c.usd)+', '+c.w+' Gewinner · '+c.be+' BE · '+c.l+' Verluste ('+fm(c.lusd)+')">'+fmt(c)+'<small>'+c.n+' Tr.</small></button>'; }); });
     box.style.gridTemplateColumns = 'auto repeat('+slots.length+', minmax(46px,1fr))';
     box.innerHTML = h;
     // beste / schlechteste Zeit
-    const bySlot = {}; ts.forEach(t=>{ const s = Math.floor(minOf(t.time)/st)*st; const c = bySlot[s] || (bySlot[s] = {n:0,usd:0,be:0,lusd:0}); const n = netOf(t); c.n++; c.usd += n; if(isBE(t)) c.be++; else if(n<0) c.lusd += n; });
+    const bySlot = {}; ts.forEach(t=>{ const s = Math.floor(minOf(t.time)/st)*st; const c = bySlot[s] || (bySlot[s] = {n:0,usd:0,be:0,lusd:0}); const n = netOf(t), a = amt(t); c.n++; c.usd += a; if(isBE(t)) c.be++; else if(n<0) c.lusd += a; });
     const beTop = Object.entries(bySlot).filter(e=>e[1].be).sort((a,b)=>b[1].be-a[1].be)[0];
     const lossTop = Object.entries(bySlot).filter(e=>e[1].lusd<0).sort((a,b)=>a[1].lusd-b[1].lusd)[0];
     const ent = Object.entries(bySlot).sort((a,b)=>b[1].usd-a[1].usd);
-    const byWd = {}; ts.forEach(t=>{ const d = wdOf(t.date); const c = byWd[d] || (byWd[d] = {n:0,usd:0}); c.n++; c.usd += netOf(t); });
+    const byWd = {}; ts.forEach(t=>{ const d = wdOf(t.date); const c = byWd[d] || (byWd[d] = {n:0,usd:0}); c.n++; c.usd += amt(t); });
     const wdE = Object.entries(byWd).sort((a,b)=>b[1].usd-a[1].usd);
     const lbl = s => hhmm(+s)+'–'+hhmm(+s+st);
-    $('#hm-sum').innerHTML = '<span>Beste Zeit: <b class="pos">'+lbl(ent[0][0])+' · '+money(ent[0][1].usd)+'</b></span>'+
-      (ent.length>1 && ent[ent.length-1][1].usd<0 ? '<span>Schwächste Zeit: <b class="neg">'+lbl(ent[ent.length-1][0])+' · '+money(ent[ent.length-1][1].usd)+'</b></span>' : '')+
-      '<span>Bester Tag: <b>'+WD[wdE[0][0]]+' · '+money(wdE[0][1].usd)+'</b></span>'+
-      (wdE.length>1 && wdE[wdE.length-1][1].usd<0 ? '<span>Schwächster Tag: <b>'+WD[wdE[wdE.length-1][0]]+' · '+money(wdE[wdE.length-1][1].usd)+'</b></span>' : '')+
+    $('#hm-sum').innerHTML = '<span>Beste Zeit: <b class="pos">'+lbl(ent[0][0])+' · '+fm(ent[0][1].usd)+'</b></span>'+
+      (ent.length>1 && ent[ent.length-1][1].usd<0 ? '<span>Schwächste Zeit: <b class="neg">'+lbl(ent[ent.length-1][0])+' · '+fm(ent[ent.length-1][1].usd)+'</b></span>' : '')+
+      '<span>Bester Tag: <b>'+WD[wdE[0][0]]+' · '+fm(wdE[0][1].usd)+'</b></span>'+
+      (wdE.length>1 && wdE[wdE.length-1][1].usd<0 ? '<span>Schwächster Tag: <b>'+WD[wdE[wdE.length-1][0]]+' · '+fm(wdE[wdE.length-1][1].usd)+'</b></span>' : '')+
       (beTop ? '<span>Meiste Break-Even: <b>'+lbl(beTop[0])+' · '+beTop[1].be+'×</b></span>' : '')+
-      (lossTop ? '<span>Meiste Verluste: <b class="neg">'+lbl(lossTop[0])+' · '+money(Math.round(lossTop[1].lusd))+'</b></span>' : '');
+      (lossTop ? '<span>Meiste Verluste: <b class="neg">'+lbl(lossTop[0])+' · '+fm(lossTop[1].lusd)+'</b></span>' : '');
   }
   const segPick = (sel, key, cast) => document.querySelectorAll(sel+' button').forEach(b=>b.addEventListener('click', ()=>{ hm[key] = cast(b.dataset.v); try{ localStorage.setItem('nqj-hm', JSON.stringify(hm)); }catch(e){} drawHeat(anaList); }));
-  segPick('#hm-val', 'val', String); segPick('#hm-step', 'step', Number);
+  segPick('#hm-val', 'val', String); segPick('#hm-step', 'step', Number); segPick('#hm-unit', 'unit', String);
   const cal = {y:null, m:null};
   function drawCal(){
     const box = $('#cal'); if(!box) return;
