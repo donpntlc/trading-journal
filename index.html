@@ -2085,7 +2085,7 @@ table.tlist td{white-space:nowrap}
       const zr = c.r, zg = c.g, zb = c.b, za = (c.a ?? 42)/255;
       const y1 = Y(Math.min(z.hi,hi)), y2 = Y(Math.max(z.lo,lo));
       g.fillStyle = 'rgba('+zr+','+zg+','+zb+','+za+')'; g.fillRect(pl, y1, PW, y2-y1);
-      g.strokeStyle = 'rgba('+zr+','+zg+','+zb+','+Math.min(1, za*2.5)+')'; g.lineWidth = 1;
+      const ed = z.edge; g.strokeStyle = ed ? 'rgba('+ed.r+','+ed.g+','+ed.b+','+((ed.a ?? 255)/255)+')' : 'rgba('+zr+','+zg+','+zb+','+Math.min(1, za*2.5)+')'; g.lineWidth = 1;
       [z.hi, z.lo].forEach(p=>{ if(p<lo||p>hi) return; const y = Math.round(Y(p))+.5; g.beginPath(); g.moveTo(pl,y); g.lineTo(pl+PW,y); g.stroke(); });
       g.fillStyle = 'rgba('+Math.min(255,zr+80)+','+Math.min(255,zg+80)+','+Math.min(255,zb+80)+',.9)'; g.font = '10px '+cssv('--f-mono');
       if(zoneNums && y2-y1 > 14) g.fillText(z.lo.toLocaleString('de-CH')+'–'+z.hi.toLocaleString('de-CH'), pl+6, y1+12); });
