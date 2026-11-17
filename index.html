@@ -548,7 +548,7 @@ table.tlist td{white-space:nowrap}
     </div>
     <div class="cv-wrap" id="cv-wrap"><canvas id="cv" role="img" aria-label="NQ-Chart mit Ein- und Ausstiegen und Zonen"></canvas></div>
     <div class="chart-empty" id="chart-empty" hidden>Für diesen Tag gibt es noch keine Chartdaten. Nach dem Handel den ATAS-Export laufen lassen und Claude Bescheid geben.</div>
-    <div class="legend"><span><i style="background:var(--zone)"></i>Zonen aus ATAS</span><span>▲ Long-Einstieg</span><span>▼ Short-Einstieg</span><span>● Ausstieg (grün Gewinn, rot Verlust)</span><span>Mausrad: Zeit zoomen · Ziehen: verschieben · An der Preisachse ziehen oder Shift+Mausrad: Preis skalieren · Doppelklick: zurücksetzen</span></div>
+    <div class="legend"><span><i style="background:var(--zone)"></i>Zonen aus ATAS</span><span>▲ Long-Einstieg</span><span>▼ Short-Einstieg</span><span>● Ausstieg (grün Gewinn, rot Verlust)</span><span>Mausrad: Zeit zoomen · Ziehen: verschieben · An der Preisachse ziehen oder Shift+Mausrad: Preis skalieren · Doppelklick: zurücksetzen</span><span>Handy: 1 Finger verschieben · 2 Finger auseinander/zusammen: Kerzen größer/kleiner · Doppeltipp: zurücksetzen</span></div>
   </section>
 
   <div class="main">
@@ -1988,23 +1988,40 @@ table.tlist td{white-space:nowrap}
       const minW = Math.max(tf*6000, 60000); if(n1-n0 < minW){ const m=(n0+n1)/2; n0=m-minW/2; n1=m+minW/2; }
       view.t0 = Math.max(view.first, n0); view.t1 = Math.min(view.last, n1); redraw();
     }, {passive:false});
+    // Maus + Touch: 1 Finger = verschieben, 2 Finger = Zeit zoomen (Pinch), Doppeltipp = zurücksetzen
+    const pts = new Map(); let pinch = null, lastTap = 0;
+    const startDrag = (e)=>{ const r = cv.getBoundingClientRect();
+      drag = {x:e.clientX, y:e.clientY, t0:view.cur0, t1:view.cur1, axis: e.clientX - r.left > r.width - 64, ps:view.pScale, sh:view.pShift, w:r.width, h:r.height}; };
+    const startPinch = ()=>{ const r = cv.getBoundingClientRect(); const [a,b] = [...pts.values()];
+      const mid = (a.x+b.x)/2 - r.left; pinch = {d: Math.max(20, Math.abs(a.x-b.x)), t0:view.cur0, t1:view.cur1, mid, w:r.width}; drag = null; };
     cv.addEventListener('pointerdown', e=>{
-      const r = cv.getBoundingClientRect();
-      drag = {x:e.clientX, y:e.clientY, t0:view.cur0, t1:view.cur1, axis: e.clientX - r.left > r.width - 64, ps:view.pScale, sh:view.pShift, w:r.width, h:r.height};
-      cv.setPointerCapture(e.pointerId); cv.style.cursor = 'grabbing';
+      try{ cv.setPointerCapture(e.pointerId); }catch(err){}
+      pts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+      if(e.pointerType==='touch'){ const now = Date.now(); if(pts.size===1 && now-lastTap < 300){ resetView(); redraw(); lastTap = 0; return; } lastTap = now; }
+      if(pts.size===2) startPinch(); else if(pts.size===1){ startDrag(e); cv.style.cursor = 'grabbing'; }
     });
     cv.addEventListener('pointermove', e=>{
+      if(pts.has(e.pointerId)) pts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+      if(pinch && pts.size>=2){
+        const [a,b] = [...pts.values()]; const d = Math.max(20, Math.abs(a.x-b.x)), f = pinch.d/d;
+        const span = pinch.t1-pinch.t0, at = pinch.t0 + (pinch.mid-8)/(pinch.w-72)*span;
+        let n0 = at - (at-pinch.t0)*f, n1 = at + (pinch.t1-at)*f;
+        const minW = Math.max(tf*6000, 60000); if(n1-n0 < minW){ const m=(n0+n1)/2; n0=m-minW/2; n1=m+minW/2; }
+        view.t0 = Math.max(view.first, n0); view.t1 = Math.min(view.last, n1); redraw(); return;
+      }
       if(!drag) return;
       const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if(Math.abs(dx)+Math.abs(dy) > 6) lastTap = 0;
       if(drag.axis){ view.pScale = Math.min(20, Math.max(.1, drag.ps * Math.exp(dy/150))); }
       else {
         const dt = -dx/(drag.w-72)*(drag.t1-drag.t0);
         view.t0 = drag.t0 + dt; view.t1 = drag.t1 + dt;
-        const per = (view.hi - view.lo)/(drag.h-36); view.pShift = drag.sh + dy*per*0 + (e.altKey?0:dy*per);
+        const per = (view.hi - view.lo)/(drag.h-36); view.pShift = drag.sh + (e.altKey?0:dy*per);
       }
       redraw();
     });
-    const end = ()=>{ drag = null; cv.style.cursor = 'grab'; };
+    const end = e=>{ pts.delete(e.pointerId); if(pts.size<2) pinch = null;
+      if(pts.size===1){ const [p] = [...pts.values()]; startDrag({clientX:p.x, clientY:p.y}); } else if(!pts.size){ drag = null; cv.style.cursor = 'grab'; } };
     cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
     cv.addEventListener('dblclick', ()=>{ resetView(); redraw(); });
   })();
