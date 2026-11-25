@@ -681,6 +681,7 @@ table.tlist td{white-space:nowrap}
       <div class="hm-sum" id="cal-sum"></div>
     </section>
     <div class="ana">
+      <div class="card" style="grid-column:1/-1"><h2>Was funktioniert am besten</h2><p class="sub">Alle Merkmale auf einen Blick, sortiert nach Ø Ergebnis pro Trade. Oben deine Stärken, unten was dich Geld kostet. Erst ab 3 Trades pro Merkmal.</p><div id="ana-rank"></div></div>
       <div class="card"><h2>Teuerste Fehler</h2><p class="sub">Punkte = Anzahl × Gewicht (3 P schwer, 2 P mittel). Hier liegt dein größter Hebel.</p><div id="ana-errs"></div></div>
       <div class="card"><h2>Nach Situation („Wo?“)</h2><p class="sub">Wo funktionieren deine Setups, wo nicht?</p><div id="ana-ctx"></div></div>
       <div class="card"><h2>Setup und Modus</h2><div id="ana-setup"></div></div>
@@ -1612,7 +1613,7 @@ table.tlist td{white-space:nowrap}
   // ---- Auswertung
   function tbl(head, rows){ return '<div class="scroll"><table><thead><tr>'+head.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'+rows.join('')+'</tbody></table></div>'; }
   let anaList = [], anaCat = null;
-  const CAT_TITLE = c => { const [k,v] = c.split(':'); return k==='err' ? 'Fehler: '+(ERR[v]?ERR[v].label:v) : k==='ctx' ? 'Wo: '+v : k==='setup' ? 'Setup: '+v : k==='prop' ? 'Eigenschaft: '+v : k==='zone' ? 'Lage: '+v : k==='hold' ? 'Haltedauer '+(()=>{ const [a,b] = v.split('|').map(Number); return b>=1e9 ? 'über '+fmtDur(a) : fmtDur(a)+' – '+fmtDur(b); })() : k==='slot' ? (()=>{ const [wd,m0,st] = c.slice(5).split('|').map(Number); return WD[wd]+' '+hhmm(m0)+'–'+hhmm(m0+st); })() : k==='day' ? fmtDate(v) : k==='wk' ? 'Woche ab '+fmtDate(v) : v; };
+  const CAT_TITLE = c => { const [k,v] = c.split(':'); return k==='err' ? 'Fehler: '+(ERR[v]?ERR[v].label:v) : k==='ctx' ? 'Wo: '+v : k==='setup' ? 'Setup: '+v : k==='prop' ? 'Eigenschaft: '+v : k==='zone' ? 'Lage: '+v : k==='hold' ? 'Haltedauer '+(()=>{ const [a,b] = v.split('|').map(Number); return b>=1e9 ? 'über '+fmtDur(a) : fmtDur(a)+' – '+fmtDur(b); })() : k==='slot' ? (()=>{ const [wd,m0,st] = c.slice(5).split('|').map(Number); return WD[wd]+' '+hhmm(m0)+'–'+hhmm(m0+st); })() : k==='dir' ? 'Richtung: '+v : k==='tn' ? v+'. Trade des Tages' : k==='wd' ? 'Wochentag: '+WD[+v] : k==='rule' ? 'Regel eingehalten: '+v : k==='clean' ? (v==='1'?'Ohne Fehler':'Mit Fehlern') : k==='win' ? 'Uhrzeit '+hhmm(+v)+'–'+hhmm(+v+30) : k==='day' ? fmtDate(v) : k==='wk' ? 'Woche ab '+fmtDate(v) : v; };
   const CAT_FN = c => { const i = c.indexOf(':'), k = c.slice(0,i), v = c.slice(i+1);
     if(k==='err') return t=>(t.errs||[]).includes(v);
     if(k==='ctx') return t=>t.ctx===v;
@@ -1621,10 +1622,19 @@ table.tlist td{white-space:nowrap}
     if(k==='zone') return t=>t.zone && t.zone.cls===v;
     if(k==='hold'){ const [a,b] = v.split('|').map(Number); return t=>{ const h = holdOf(t); return h!=null && h>=a && h<b; }; }
     if(k==='slot'){ const [wd,m0,st] = v.split('|').map(Number); return t=>wdOf(t.date)===wd && (()=>{ const m = minOf(t.time); return m!=null && m>=m0 && m<m0+st; })(); }
+    if(k==='dir') return t=>t.dir===v;
+    if(k==='tn') return t=>tnOf(t)===+v;
+    if(k==='wd') return t=>wdOf(t.date)===+v;
+    if(k==='rule') return t=>(t.rule||'offen')===v;
+    if(k==='clean') return v==='1' ? t=>!(t.errs||[]).length : t=>(t.errs||[]).length>0;
+    if(k==='win'){ const m0 = +v; return t=>{ const m = minOf(t.time); return m!=null && m>=m0 && m<m0+30; }; }
     if(k==='day') return t=>t.date===v && t.acct!=='Demo';
     if(k==='wk') return t=>t.acct!=='Demo' && mondayOf(t.date)===v;
     return ()=>false; };
   const WD = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+  let tnMap = new Map();
+  const tnOf = t => tnMap.get(t) || null;
+  function buildTn(){ tnMap = new Map(); const byDay = {}; trades.filter(t=>t.acct!=='Demo').forEach(t=>{ const k = t.date+'|'+(t.acct||''); (byDay[k] = byDay[k]||[]).push(t); }); Object.values(byDay).forEach(a=>a.sort((x,y)=>(x.sort||'').localeCompare(y.sort||'')).forEach((t,i)=>tnMap.set(t, i+1))); }
   const wdOf = d => { if(!d) return -1; const [y,m,dd] = d.split('-'); return new Date(+y,+m-1,+dd).getDay(); };
   const minOf = s => { if(!s) return null; const [h,m] = s.split(':'); return (+h)*60 + (+m||0); };
   const hhmm = m => String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
@@ -1822,7 +1832,29 @@ table.tlist td{white-space:nowrap}
     cv.addEventListener('dblclick', perfReset);
   })();
   function renderAnalysis(list){
-    anaList = list; drawPerf(); drawHeat(list); drawCal();
+    anaList = list; drawPerf(); drawHeat(list); drawCal(); buildTn();
+    { const feats = [];
+      const add = (grp, label, cat, f) => { const ts = list.filter(f); if(ts.length < 3) return; const w = ts.filter(t=>t.ticks>0).length, usd = ts.reduce((a,t)=>a+netOf(t),0); feats.push({grp, label, cat, n:ts.length, q:w/ts.length, usd, avg:usd/ts.length}); };
+      ['Long','Short'].forEach(d=>add('Richtung', d, 'dir:'+d, t=>t.dir===d));
+      [1,2,3,4,5].forEach(n=>add('Trade-Nr.', n+'. Trade am Tag', 'tn:'+n, t=>tnOf(t)===n));
+      [1,2,3,4,5].forEach(d=>add('Wochentag', WD[d], 'wd:'+d, t=>wdOf(t.date)===d));
+      { const ws = new Set(); list.forEach(t=>{ const m = minOf(t.time); if(m!=null) ws.add(Math.floor(m/30)*30); }); [...ws].sort((a,b)=>a-b).forEach(m0=>add('Uhrzeit', hhmm(m0)+'–'+hhmm(m0+30), 'win:'+m0, CAT_FN('win:'+m0))); }
+      [...new Set(list.map(t=>t.setup && (t.setup+' · '+(t.mode==='Runner'?'Runner':'Scalp'))).filter(Boolean))].forEach(k=>add('Setup', k, 'setup:'+k, CAT_FN('setup:'+k)));
+      [...new Set(list.map(t=>t.ctx).filter(Boolean))].forEach(k=>add('Wo?', k, 'ctx:'+k, t=>t.ctx===k));
+      const zl = {'In Zone':'Mitten in der Zone','In Zone rein':'Gegen die Zone (rein)','Keine Zone':'Keine Zone in der Nähe'};
+      [...new Set(list.map(t=>t.zone && t.zone.cls).filter(Boolean))].forEach(k=>add('Zone', zl[k]||k, 'zone:'+k, t=>t.zone && t.zone.cls===k));
+      [[0,60,'unter 1 min'],[60,180,'1–3 min'],[180,600,'3–10 min'],[600,1e9,'über 10 min']].forEach(b=>add('Haltedauer', b[2], 'hold:'+b[0]+'|'+b[1], CAT_FN('hold:'+b[0]+'|'+b[1])));
+      [...new Set(list.flatMap(t=>t.props||[]))].forEach(k=>add('Eigenschaft', k, 'prop:'+k, t=>(t.props||[]).includes(k)));
+      add('Regel', 'Regel eingehalten', 'rule:ja', t=>t.rule==='ja'); add('Regel', 'Regel gebrochen', 'rule:nein', t=>t.rule==='nein');
+      add('Fehler', 'Ohne Fehler', 'clean:1', t=>!(t.errs||[]).length); add('Fehler', 'Mit Fehlern', 'clean:0', t=>(t.errs||[]).length>0);
+      feats.sort((a,b)=>b.avg-a.avg);
+      const all = list.length, wins = list.filter(t=>t.ticks>0), loss = list.filter(t=>netOf(t)<0);
+      const gw = wins.reduce((a,t)=>a+Math.max(0,netOf(t)),0), gl = -loss.reduce((a,t)=>a+netOf(t),0);
+      const qAll = all ? Math.round(wins.length/all*100) : 0;
+      const head = all ? '<div class="hm-sum"><span>Trefferquote gesamt: <b>'+qAll+' %</b></span><span>Trades: <b>'+all+'</b></span><span>Ø Gewinner: <b>'+money(wins.length?gw/wins.length:0)+'</b></span><span>Ø Verlierer: <b>'+money(loss.length?-gl/loss.length:0)+'</b></span><span>Profit-Faktor: <b>'+(gl?(gw/gl).toFixed(2):'–')+'</b></span></div>' : '';
+      const maxA = Math.max(1, ...feats.map(f=>Math.abs(f.avg)));
+      const row = (f,i) => '<tr data-cat="'+esc(f.cat)+'"><td class="num">'+(i+1)+'</td><td>'+esc(f.label)+'<div class="hbar" style="width:'+(Math.abs(f.avg)/maxA*100)+'%;background:var('+(f.avg<0?'--loss':'--win')+')"></div></td><td class="sub" style="margin:0">'+esc(f.grp)+'</td><td class="num">'+f.n+'</td><td class="num '+(f.q>=.5?'pos':'neg')+'">'+Math.round(f.q*100)+' %</td><td class="num '+(f.avg<0?'neg':'pos')+'">'+money(Math.round(f.avg))+'</td><td class="num '+(f.usd<0?'neg':'pos')+'">'+money(f.usd)+'</td></tr>';
+      $('#ana-rank').innerHTML = feats.length ? head + tbl(['#','Merkmal','Bereich','Trades','Treffer','Ø / Trade','Ergebnis'], feats.map(row)) : '<p class="sub">Noch zu wenige Trades (mind. 3 pro Merkmal).</p>'; }
     // Fehler
     const ec = {};
     list.forEach(t=>(t.errs||[]).forEach(k=>{ const e = ec[k] || (ec[k]={n:0,usd:0}); e.n++; e.usd += netOf(t); }));
